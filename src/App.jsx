@@ -1,917 +1,1344 @@
-import React, { useState, useEffect, useMemo, useCallback } from "react";
-import { createClient } from "@supabase/supabase-js";
+import { useState, useMemo } from "react";
+import { Plus, X, Check, Flame, ChevronLeft, ChevronRight } from "lucide-react";
 
-const SUPABASE_URL = "https://diznhmmgkrdfdjxuhurw.supabase.co";
-const SUPABASE_ANON_KEY =
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRpem5obW1na3JkZmRqeHVodXJ3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc4MjI1MzAsImV4cCI6MjEwMzM5ODUzMH0.5jzwMzZjvQMlIWmhHXcCcAW27vnf8k4TbZQCQ40fjTE";
+// ---- Design tokens ----
+// Deep warm charcoal ledger, brass accent, muted "family" palette per type.
+// Navigation model: tapping a row drills into its subtasks on a fresh screen,
+// same as tapping a folder — recursively, to any depth.
 
-const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-const FRACTIONS = [
-  { label: "Caisse", valeur: 1 },
-  { label: "1/2 caisse", valeur: 0.5 },
-  { label: "1/4 caisse", valeur: 0.25 },
+const TYPES = [
+  { id: "projects", label: "Projects", family: "Build", color: "#5B8A82" },
+  { id: "goals", label: "Goals", family: "Build", color: "#C9A24B" },
+  { id: "career", label: "Career", family: "Build", color: "#4B7A8A" },
+  { id: "financial", label: "Financial Tasks", family: "Build", color: "#A6A24B" },
+  { id: "habits", label: "Habits", family: "Recurring", color: "#7A9B76" },
+  { id: "routines", label: "Routines", family: "Recurring", color: "#92A868" },
+  { id: "maintenance", label: "Maintenance", family: "Recurring", color: "#7C8A94" },
+  { id: "onetime", label: "One-Time Tasks", family: "Everyday", color: "#A69481" },
+  { id: "social", label: "Social / Relationships", family: "Everyday", color: "#C97B7B" },
+  { id: "adventure", label: "Adventure", family: "Everyday", color: "#C9614B" },
+  { id: "challenges", label: "Challenges", family: "Trials", color: "#C97B4B" },
+  { id: "experiments", label: "Experiments", family: "Trials", color: "#D9954B" },
+  { id: "learning", label: "Learning", family: "Growth", color: "#6E8FB0" },
+  { id: "personal_dev", label: "Personal Development", family: "Growth", color: "#7C7BA6" },
+  { id: "creative", label: "Creative Projects", family: "Growth", color: "#A6678A" },
+  { id: "health", label: "Health & Fitness", family: "Growth", color: "#5B9B6E" },
+  { id: "collections", label: "Collections", family: "Growth", color: "#8A6E4B" },
+  { id: "bucket_list", label: "Bucket List", family: "Vision", color: "#8B6EA8" },
+  { id: "milestones", label: "Life Milestones", family: "Vision", color: "#5B5B9B" },
+  { id: "vision", label: "Dreams / Long-Term Vision", family: "Vision", color: "#6E4B7A" },
 ];
 
-const MODES_PAIEMENT = ["Cash", "MonCash", "NatCash"];
+const typeMap = Object.fromEntries(TYPES.map((t) => [t.id, t]));
+const PRIORITIES = ["low", "med", "high"];
 
-const fmt = (n) =>
-  Number(n).toLocaleString("fr-HT", { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+let idCounter = 1;
+const mk = (title, type, priority, parentId, doneOffset) => ({
+  id: idCounter++,
+  title,
+  type,
+  parentId: parentId || null,
+  priority,
+  done: !!doneOffset,
+  created: Date.now() - (doneOffset || Math.random() * 200000000),
+  completions: [],
+  notes: "",
+  purpose: "",
+  targetDate: null,
+  cover: null,
+});
 
-function genId() {
-  return Math.random().toString(36).slice(2, 9);
+function seedItems() {
+  const vision = mk("Become financially independent", "vision", "high");
+  const goal = mk("Save $5,000 this year", "goals", "high", vision.id);
+  const bucket = mk("Travel the world with the income", "bucket_list", "low", vision.id);
+  const milestone = mk("Hit $10,000 net worth", "milestones", "high", vision.id);
+  const targetD = new Date();
+  targetD.setDate(targetD.getDate() + 45);
+  milestone.targetDate = dateKey(targetD);
+  const mTask1 = mk("Cut discretionary spending", "onetime", "med", milestone.id, 86400000);
+  const mTask2 = mk("Move savings to high-yield account", "onetime", "med", milestone.id);
+
+  // A project can stand on its own at the top level — it doesn't need a
+  // goal or vision above it to exist.
+  const project = mk("Start an online business", "projects", "high");
+  project.notes = "Idea: niche down to a specific hobby audience rather than going broad. Check competitor pricing before launch.";
+  const task1 = mk("Research the market", "onetime", "med", project.id, 86400000);
+  const task2 = mk("Build the website", "onetime", "med", project.id);
+  const subA = mk("Pick a platform", "onetime", "low", task2.id);
+  const subB = mk("Design the homepage", "onetime", "med", task2.id);
+
+  const habit = mk("Read 20 minutes", "habits", "low");
+  // Seed a plausible last-30-days pattern: mostly consistent with a couple gaps.
+  const habitDays = last30Days();
+  habit.completions = habitDays
+    .filter((_, i) => i < 27 && ![5, 12, 13].includes(i))
+    .map((d) => dateKey(d));
+  habit.done = habit.completions.includes(todayKey());
+
+  const mima = mk("Mima : the biggest marketplace in Haiti", "projects", "high");
+  mima.cover = "linear-gradient(135deg, #5B8A82, #2E4A46)";
+  mima.purpose =
+    "Haiti's markets are fragmented — vendors rely on foot traffic and word of mouth, and buyers waste time comparing prices across scattered stalls with no visibility into stock, pricing, or trust. Mima exists to give Haitian sellers, from Port-au-Prince street vendors to diaspora-run import businesses, one place to be found and paid reliably. This isn't just another app — it's the infrastructure Haiti's informal economy has never had: a marketplace big enough that being on it becomes the default way to sell.";
+
+  return [vision, goal, bucket, milestone, mTask1, mTask2, project, task1, task2, subA, subB, habit, mima];
 }
 
-export default function POSViande() {
-  const [session, setSession] = useState(null);
-  const [profil, setProfil] = useState(null);
-  const [chargement, setChargement] = useState(true);
+function timeAgo(ts) {
+  const mins = Math.floor((Date.now() - ts) / 60000);
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  return `${Math.floor(hrs / 24)}d ago`;
+}
 
-  const [produits, setProduits] = useState([]);
-  const [profils, setProfils] = useState([]);
-  const [ventes, setVentes] = useState([]);
+// ---- Habit day-tracking helpers ----
+function dateKey(d) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+function todayKey() {
+  return dateKey(new Date());
+}
+function last30Days() {
+  const days = [];
+  for (let i = 29; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    days.push(d);
+  }
+  return days;
+}
+function currentStreak(completions) {
+  let streak = 0;
+  const d = new Date();
+  while (completions.includes(dateKey(d))) {
+    streak += 1;
+    d.setDate(d.getDate() - 1);
+  }
+  return streak;
+}
 
-  const [panier, setPanier] = useState([]);
-  const [vue, setVue] = useState("vente");
-  const [modalCheckout, setModalCheckout] = useState(false);
-  const [modePaiement, setModePaiement] = useState("Cash");
-  const [montantRecu, setMontantRecu] = useState("");
-  const [recu, setRecu] = useState(null);
-  const [erreur, setErreur] = useState("");
-  const [enTraitement, setEnTraitement] = useState(false);
+export default function TaskLedger() {
+  const [items, setItems] = useState(seedItems);
+  const [draft, setDraft] = useState("");
+  const [draftType, setDraftType] = useState("onetime");
+  const [draftPriority, setDraftPriority] = useState("med");
+  const [filter, setFilter] = useState("all");
+  const [collapsed, setCollapsed] = useState({});
+  const [justStamped, setJustStamped] = useState(null);
+  const [stack, setStack] = useState([]); // array of item ids, drill-down path
+  const [showAddModal, setShowAddModal] = useState(false);
 
-  // ---------- Session ----------
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session);
-      setChargement(false);
-    });
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, s) => {
-      setSession(s);
-    });
-    return () => sub.subscription.unsubscribe();
-  }, []);
+  const byId = useMemo(() => Object.fromEntries(items.map((i) => [i.id, i])), [items]);
 
-  useEffect(() => {
-    if (!session) {
-      setProfil(null);
-      return;
-    }
-    supabase
-      .from("profiles")
-      .select("*")
-      .eq("id", session.user.id)
-      .single()
-      .then(({ data }) => setProfil(data));
-  }, [session]);
+  const ROOT_KEY = "root";
 
-  const estPDG = profil?.role === "pdg";
-
-  // ---------- Chargement des données ----------
-  const chargerProduits = useCallback(async () => {
-    const { data } = await supabase.from("produits").select("*").order("nom");
-    if (data) setProduits(data);
-  }, []);
-
-  const chargerProfils = useCallback(async () => {
-    const { data } = await supabase.from("profiles").select("*").order("nom_complet");
-    if (data) setProfils(data);
-  }, []);
-
-  const chargerVentes = useCallback(async () => {
-    const { data } = await supabase
-      .from("ventes")
-      .select("*, vente_lignes(*), profiles(nom_complet)")
-      .order("created_at", { ascending: false });
-    if (data) setVentes(data);
-  }, []);
-
-  useEffect(() => {
-    if (!session) return;
-    chargerProduits();
-    chargerProfils();
-    chargerVentes();
-  }, [session, chargerProduits, chargerProfils, chargerVentes]);
-
-  // ---------- Stock disponible en tenant compte du panier ----------
-  const stockReserve = useMemo(() => {
+  const childrenOf = useMemo(() => {
     const map = {};
-    panier.forEach((l) => {
-      map[l.produitId] = (map[l.produitId] || 0) + l.fractionValeur * l.qte;
+    items.forEach((it) => {
+      const key = it.parentId == null ? ROOT_KEY : it.parentId;
+      (map[key] = map[key] || []).push(it);
     });
+    Object.values(map).forEach((list) => list.sort((a, b) => b.created - a.created));
     return map;
-  }, [panier]);
+  }, [items]);
 
-  const stockDisponible = (produit) => produit.stock - (stockReserve[produit.id] || 0);
-
-  // ---------- Panier ----------
-  function ajouterAuPanier(produit, fraction) {
-    const dispo = stockDisponible(produit);
-    if (dispo < fraction.valeur) return;
-    setPanier((prev) => {
-      const existant = prev.find(
-        (l) => l.produitId === produit.id && l.fractionValeur === fraction.valeur
-      );
-      if (existant) {
-        return prev.map((l) => (l.ligneId === existant.ligneId ? { ...l, qte: l.qte + 1 } : l));
-      }
-      return [
-        ...prev,
-        {
-          ligneId: genId(),
-          produitId: produit.id,
-          nom: produit.nom,
-          fractionLabel: fraction.label,
-          fractionValeur: fraction.valeur,
-          prixUnitaire: produit.prix_caisse * fraction.valeur,
-          qte: 1,
-        },
-      ];
+  const progressOf = (id) => {
+    const kids = childrenOf[id] || [];
+    let done = 0;
+    let total = 0;
+    kids.forEach((k) => {
+      total += 1;
+      if (k.done) done += 1;
+      const sub = progressOf(k.id);
+      done += sub.done;
+      total += sub.total;
     });
-  }
+    return { done, total };
+  };
 
-  function changerQte(ligneId, delta) {
-    setPanier((prev) =>
-      prev
-        .map((l) => {
-          if (l.ligneId !== ligneId) return l;
-          const produit = produits.find((p) => p.id === l.produitId);
-          const nouvelleQte = l.qte + delta;
-          if (nouvelleQte <= 0) return null;
-          if (delta > 0) {
-            const dejaReserve = stockReserve[l.produitId] || 0;
-            const dispoSansCetteLigne = produit.stock - dejaReserve + l.fractionValeur * l.qte;
-            if (dispoSansCetteLigne < l.fractionValeur * nouvelleQte) return l;
+  const currentId = stack.length ? stack[stack.length - 1] : null;
+  const currentItem = currentId ? byId[currentId] : null;
+
+  const addItem = () => {
+    const title = draft.trim();
+    if (!title) return;
+    setItems((list) => [
+      {
+        id: idCounter++,
+        title,
+        type: draftType,
+        parentId: currentId,
+        priority: draftPriority,
+        done: false,
+        created: Date.now(),
+        completions: [],
+        notes: "",
+        purpose: "",
+        targetDate: null,
+        cover: null,
+      },
+      ...list,
+    ]);
+    setDraft("");
+    setShowAddModal(false);
+  };
+
+  const toggleItem = (id) => {
+    setItems((list) =>
+      list.map((it) => {
+        if (it.id !== id) return it;
+        if (it.type === "habits") {
+          const today = todayKey();
+          const has = (it.completions || []).includes(today);
+          if (!has) {
+            setJustStamped(id);
+            setTimeout(() => setJustStamped((cur) => (cur === id ? null : cur)), 500);
           }
-          return { ...l, qte: nouvelleQte };
-        })
-        .filter(Boolean)
-    );
-  }
-
-  function retirerLigne(ligneId) {
-    setPanier((prev) => prev.filter((l) => l.ligneId !== ligneId));
-  }
-
-  function viderPanier() {
-    setPanier([]);
-  }
-
-  const totalPanier = panier.reduce((s, l) => s + l.prixUnitaire * l.qte, 0);
-
-  // ---------- Checkout ----------
-  function ouvrirCheckout() {
-    if (panier.length === 0) return;
-    setMontantRecu("");
-    setModePaiement("Cash");
-    setErreur("");
-    setModalCheckout(true);
-  }
-
-  async function confirmerVente() {
-    const recuNum = parseFloat(montantRecu) || 0;
-    if (modePaiement === "Cash" && recuNum < totalPanier) return;
-    setEnTraitement(true);
-    setErreur("");
-
-    const { data: venteInseree, error: erreurVente } = await supabase
-      .from("ventes")
-      .insert({
-        vendeur_id: session.user.id,
-        total: totalPanier,
-        mode_paiement: modePaiement,
-        montant_recu: modePaiement === "Cash" ? recuNum : totalPanier,
-        monnaie: modePaiement === "Cash" ? recuNum - totalPanier : 0,
+          const completions = has
+            ? it.completions.filter((d) => d !== today)
+            : [...(it.completions || []), today];
+          return { ...it, completions, done: !has };
+        }
+        if (!it.done) {
+          setJustStamped(id);
+          setTimeout(() => setJustStamped((cur) => (cur === id ? null : cur)), 500);
+        }
+        return { ...it, done: !it.done };
       })
-      .select()
-      .single();
-
-    if (erreurVente) {
-      setErreur("Échec de l'enregistrement de la vente. Réessaie.");
-      setEnTraitement(false);
-      return;
-    }
-
-    const lignes = panier.map((l) => ({
-      vente_id: venteInseree.id,
-      produit_id: l.produitId,
-      nom: l.nom,
-      fraction_label: l.fractionLabel,
-      fraction_valeur: l.fractionValeur,
-      prix_unitaire: l.prixUnitaire,
-      qte: l.qte,
-    }));
-    await supabase.from("vente_lignes").insert(lignes);
-
-    // Déduire le stock
-    for (const p of produits) {
-      const utilise = panier
-        .filter((l) => l.produitId === p.id)
-        .reduce((s, l) => s + l.fractionValeur * l.qte, 0);
-      if (utilise) {
-        await supabase.from("produits").update({ stock: p.stock - utilise }).eq("id", p.id);
-      }
-    }
-
-    setRecu({
-      lignes: panier,
-      total: totalPanier,
-      modePaiement,
-      recu: modePaiement === "Cash" ? recuNum : totalPanier,
-      monnaie: modePaiement === "Cash" ? recuNum - totalPanier : 0,
-      date: new Date(),
-    });
-    setPanier([]);
-    setModalCheckout(false);
-    setEnTraitement(false);
-    chargerProduits();
-    chargerVentes();
-  }
-
-  // ---------- Stock admin (PDG) ----------
-  async function majProduit(id, champ, valeur) {
-    setProduits((prev) => prev.map((p) => (p.id === id ? { ...p, [champ]: valeur } : p)));
-    await supabase.from("produits").update({ [champ]: valeur }).eq("id", id);
-  }
-
-  async function ajouterProduit() {
-    const { data } = await supabase
-      .from("produits")
-      .insert({ nom: "Nouveau produit", categorie: "", prix_caisse: 0, stock: 0 })
-      .select()
-      .single();
-    if (data) setProduits((prev) => [...prev, data]);
-  }
-
-  async function supprimerProduit(id) {
-    setProduits((prev) => prev.filter((p) => p.id !== id));
-    await supabase.from("produits").delete().eq("id", id);
-  }
-
-  // ---------- Utilisateurs (PDG) ----------
-  async function changerRole(id, role) {
-    setProfils((prev) => prev.map((p) => (p.id === id ? { ...p, role } : p)));
-    await supabase.from("profiles").update({ role }).eq("id", id);
-  }
-
-  const ventesVisibles = estPDG ? ventes : ventes.filter((v) => v.vendeur_id === session?.user.id);
-  const totalJour = ventesVisibles.reduce((s, v) => s + Number(v.total), 0);
-
-  // ---------- Vue par défaut selon le rôle ----------
-  useEffect(() => {
-    if (profil) setVue(profil.role === "pdg" ? "tableau" : "vente");
-  }, [profil]);
-
-  // ---------- Données du tableau de bord (PDG) ----------
-  const estAujourdhui = (dateStr) => {
-    const d = new Date(dateStr);
-    const now = new Date();
-    return (
-      d.getFullYear() === now.getFullYear() &&
-      d.getMonth() === now.getMonth() &&
-      d.getDate() === now.getDate()
     );
   };
 
-  const ventesAujourdhui = ventes.filter((v) => estAujourdhui(v.created_at));
-  const totalAujourdhui = ventesAujourdhui.reduce((s, v) => s + Number(v.total), 0);
+  const toggleHabitDay = (id, dayKey) => {
+    setItems((list) =>
+      list.map((it) => {
+        if (it.id !== id) return it;
+        const has = (it.completions || []).includes(dayKey);
+        const completions = has
+          ? it.completions.filter((d) => d !== dayKey)
+          : [...(it.completions || []), dayKey];
+        const isToday = dayKey === todayKey();
+        return { ...it, completions, done: isToday ? !has : it.done };
+      })
+    );
+  };
 
-  const ventesParVendeur = useMemo(() => {
+  const removeItem = (id) => {
+    // Also drop any descendants so nothing is orphaned.
+    const toRemove = new Set([id]);
+    let grew = true;
+    while (grew) {
+      grew = false;
+      items.forEach((it) => {
+        if (it.parentId != null && toRemove.has(it.parentId) && !toRemove.has(it.id)) {
+          toRemove.add(it.id);
+          grew = true;
+        }
+      });
+    }
+    setItems((list) => list.filter((it) => !toRemove.has(it.id)));
+    setStack((s) => s.filter((sid) => !toRemove.has(sid)));
+  };
+
+  const updateNotes = (id, text) => {
+    setItems((list) => list.map((it) => (it.id === id ? { ...it, notes: text } : it)));
+  };
+
+  const updatePurpose = (id, text) => {
+    setItems((list) => list.map((it) => (it.id === id ? { ...it, purpose: text } : it)));
+  };
+
+  const updateTargetDate = (id, dateStr) => {
+    setItems((list) => list.map((it) => (it.id === id ? { ...it, targetDate: dateStr || null } : it)));
+  };
+
+  const updateCover = (id, cover) => {
+    setItems((list) => list.map((it) => (it.id === id ? { ...it, cover } : it)));
+  };
+
+  const childItems = childrenOf[currentId == null ? ROOT_KEY : currentId] || [];
+  const filteredChildren = useMemo(() => {
+    let list = childItems;
+    if (filter === "open") list = list.filter((i) => !i.done);
+    else if (filter === "done") list = list.filter((i) => i.done);
+    return list;
+  }, [childItems, filter]);
+
+  const groupedRoot = useMemo(() => {
+    if (currentId) return null;
     const map = {};
-    ventesAujourdhui.forEach((v) => {
-      const nom = v.profiles?.nom_complet || "—";
-      if (!map[nom]) map[nom] = { nom, total: 0, count: 0 };
-      map[nom].total += Number(v.total);
-      map[nom].count += 1;
+    filteredChildren.forEach((it) => {
+      (map[it.type] = map[it.type] || []).push(it);
     });
-    return Object.values(map).sort((a, b) => b.total - a.total);
-  }, [ventesAujourdhui]);
+    return TYPES.filter((t) => map[t.id]?.length).map((t) => ({ type: t, entries: map[t.id] }));
+  }, [currentId, filteredChildren]);
 
-  const ventesParMode = useMemo(() => {
-    const map = {};
-    ventesAujourdhui.forEach((v) => {
-      map[v.mode_paiement] = (map[v.mode_paiement] || 0) + Number(v.total);
-    });
-    return map;
-  }, [ventesAujourdhui]);
+  const toggleCollapsed = (typeId) => setCollapsed((c) => ({ ...c, [typeId]: !c[typeId] }));
 
-  const produitsStockBas = produits.filter((p) => p.stock <= 1).sort((a, b) => a.stock - b.stock);
-  const valeurStockTotal = produits.reduce((s, p) => s + p.stock * p.prix_caisse, 0);
+  const openCount = items.filter((i) => !i.done).length;
 
-  // ---------- Écran de chargement ----------
-  if (chargement) {
-    return <div style={styles.centre}>Chargement…</div>;
-  }
-
-  // ---------- Écran de connexion ----------
-  if (!session) {
-    return <EcranConnexion />;
-  }
-
-  if (!profil) {
-    return <div style={styles.centre}>Chargement du profil…</div>;
-  }
+  const drillInto = (id) => setStack((s) => [...s, id]);
+  const goBack = () => setStack((s) => s.slice(0, -1));
+  const jumpTo = (index) => setStack((s) => s.slice(0, index + 1));
 
   return (
-    <div style={styles.app}>
-      <header style={styles.header}>
-        <div>
-          <div style={styles.titre}>POS — Vente de viande par caisse</div>
-          <div style={styles.sousTitre}>
-            {profil.nom_complet} — {estPDG ? "PDG" : "Vendeur(se)"}
-          </div>
-        </div>
-        <nav style={styles.nav}>
-          {(estPDG ? ["tableau", "vente", "historique", "stock", "utilisateurs"] : ["vente", "historique"])
-            .map((v) => (
+    <div
+      style={{
+        background: "#1A1816",
+        color: "#EDE8DF",
+        fontFamily: "'Inter', ui-sans-serif, system-ui, sans-serif",
+        minHeight: "100%",
+        padding: "22px 20px 90px",
+      }}
+    >
+      {/* Header */}
+      <div style={{ marginBottom: 18, borderBottom: "1px solid #33302B", paddingBottom: 16 }}>
+        {currentItem ? (
+          <>
+            {currentItem.type === "projects" && (
+              <ProjectCover item={currentItem} onChange={(cover) => updateCover(currentItem.id, cover)} />
+            )}
+            <button
+              onClick={goBack}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 3,
+                background: "transparent",
+                border: "none",
+                color: "#948E80",
+                fontSize: 12.5,
+                cursor: "pointer",
+                padding: "2px 0 8px",
+              }}
+            >
+              <ChevronLeft size={14} /> Back
+            </button>
+            {/* Breadcrumb */}
+            <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 4, marginBottom: 8 }}>
               <button
-                key={v}
-                onClick={() => setVue(v)}
-                style={{ ...styles.navBtn, ...(vue === v ? styles.navBtnActif : {}) }}
+                onClick={() => setStack([])}
+                style={{ background: "none", border: "none", color: "#6E6858", fontSize: 11, cursor: "pointer", padding: 0 }}
               >
-                {v === "tableau"
-                  ? "Tableau de bord"
-                  : v === "vente"
-                  ? "Vente"
-                  : v === "stock"
-                  ? "Stock"
-                  : v === "utilisateurs"
-                  ? "Utilisateurs"
-                  : "Historique"}
+                Ledger
               </button>
-            ))}
-          <button style={styles.btnDeconnexion} onClick={() => supabase.auth.signOut()}>
-            Déconnexion
-          </button>
-        </nav>
-      </header>
-
-      {vue === "tableau" && estPDG && (
-        <div style={styles.panneauStock}>
-          <div style={styles.stockHeader}>
-            <div style={styles.panierTitre}>Tableau de bord — Aujourd'hui</div>
-          </div>
-
-          <div style={styles.cartesKPI}>
-            <div style={styles.carteKPI}>
-              <div style={styles.kpiLabel}>Ventes du jour</div>
-              <div style={styles.kpiValeur}>{fmt(totalAujourdhui)} HTG</div>
-              <div style={styles.kpiSousTexte}>{ventesAujourdhui.length} transaction(s)</div>
-            </div>
-            <div style={styles.carteKPI}>
-              <div style={styles.kpiLabel}>Valeur du stock</div>
-              <div style={styles.kpiValeur}>{fmt(valeurStockTotal)} HTG</div>
-              <div style={styles.kpiSousTexte}>{produits.length} produit(s)</div>
-            </div>
-            <div style={styles.carteKPI}>
-              <div style={styles.kpiLabel}>Alertes stock bas</div>
-              <div style={{ ...styles.kpiValeur, color: produitsStockBas.length ? "#B3261E" : "#1A1A1A" }}>
-                {produitsStockBas.length}
-              </div>
-              <div style={styles.kpiSousTexte}>≤ 1 caisse restante</div>
-            </div>
-          </div>
-
-          <div style={styles.grilleTableau}>
-            <div style={styles.blocTableau}>
-              <div style={styles.blocTitre}>Ventes par vendeur (aujourd'hui)</div>
-              {ventesParVendeur.length === 0 && (
-                <div style={styles.panierVide}>Aucune vente aujourd'hui</div>
-              )}
-              {ventesParVendeur.map((v) => (
-                <div key={v.nom} style={styles.ligneBloc}>
-                  <span>{v.nom}</span>
-                  <span>
-                    {fmt(v.total)} HTG ({v.count})
-                  </span>
-                </div>
+              {stack.map((id, idx) => (
+                <span key={id} style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                  <ChevronRight size={10} color="#4A4539" />
+                  <button
+                    onClick={() => jumpTo(idx)}
+                    style={{
+                      background: "none",
+                      border: "none",
+                      color: idx === stack.length - 1 ? "#C9C3B6" : "#6E6858",
+                      fontSize: 11,
+                      cursor: "pointer",
+                      padding: 0,
+                      maxWidth: 120,
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {byId[id]?.title}
+                  </button>
+                </span>
               ))}
             </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span
+                style={{ width: 8, height: 8, borderRadius: "50%", background: typeMap[currentItem.type].color, flexShrink: 0 }}
+              />
+              <h1
+                style={{
+                  fontFamily: "ui-serif, Georgia, serif",
+                  fontWeight: 600,
+                  fontSize: 22,
+                  letterSpacing: "-0.01em",
+                  margin: 0,
+                  color: "#F3EEE3",
+                }}
+              >
+                {currentItem.title}
+              </h1>
+            </div>
+            <p style={{ margin: "6px 0 0", fontSize: 12.5, color: "#948E80" }}>
+              {typeMap[currentItem.type].label}
+              {(() => {
+                const { done, total } = progressOf(currentItem.id);
+                return total > 0 ? ` · ${done}/${total} done` : "";
+              })()}
+            </p>
+          </>
+        ) : (
+          <>
+            <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between" }}>
+              <h1
+                style={{
+                  fontFamily: "ui-serif, Georgia, serif",
+                  fontWeight: 600,
+                  fontSize: 26,
+                  letterSpacing: "-0.01em",
+                  margin: 0,
+                  color: "#F3EEE3",
+                }}
+              >
+                Ledger
+              </h1>
+              <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 12, color: "#8A8478" }}>
+                {openCount} open
+              </span>
+            </div>
+            <p style={{ margin: "6px 0 0", fontSize: 13, color: "#948E80" }}>
+              Tap anything with subtasks to open it.
+            </p>
+          </>
+        )}
+      </div>
 
-            <div style={styles.blocTableau}>
-              <div style={styles.blocTitre}>Ventes par mode de paiement</div>
-              {Object.keys(ventesParMode).length === 0 && (
-                <div style={styles.panierVide}>Aucune vente aujourd'hui</div>
-              )}
-              {Object.entries(ventesParMode).map(([mode, total]) => (
-                <div key={mode} style={styles.ligneBloc}>
-                  <span>{mode}</span>
-                  <span>{fmt(total)} HTG</span>
-                </div>
-              ))}
+      {/* Add item — opens as a modal sheet, triggered by the floating button */}
+      {showAddModal && (
+        <div
+          onClick={() => setShowAddModal(false)}
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(10, 9, 8, 0.6)",
+            display: "flex",
+            alignItems: "flex-end",
+            justifyContent: "center",
+            zIndex: 50,
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              width: "100%",
+              maxWidth: 480,
+              background: "#211E1B",
+              border: "1px solid #33302B",
+              borderBottom: "none",
+              borderRadius: "16px 16px 0 0",
+              padding: "18px 16px 22px",
+              boxShadow: "0 -8px 30px rgba(0,0,0,0.4)",
+            }}
+          >
+            <div
+              style={{
+                width: 36,
+                height: 4,
+                borderRadius: 999,
+                background: "#3A362F",
+                margin: "0 auto 14px",
+              }}
+            />
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+              <span style={{ fontSize: 13, fontWeight: 600, color: "#C9C3B6" }}>
+                {currentItem ? `Add under "${currentItem.title}"` : "Log something"}
+              </span>
+              <button
+                onClick={() => setShowAddModal(false)}
+                aria-label="Close"
+                style={{ background: "transparent", border: "none", color: "#5E594E", cursor: "pointer", padding: 4 }}
+              >
+                <X size={16} />
+              </button>
             </div>
 
-            <div style={styles.blocTableau}>
-              <div style={styles.blocTitre}>Produits à réapprovisionner</div>
-              {produitsStockBas.length === 0 && (
-                <div style={styles.panierVide}>Tous les stocks sont suffisants</div>
-              )}
-              {produitsStockBas.map((p) => (
-                <div key={p.id} style={styles.ligneBloc}>
-                  <span>{p.nom}</span>
-                  <span style={{ color: "#B3261E", fontWeight: 700 }}>{fmt(p.stock)} caisse(s)</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
+            <input
+              autoFocus
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && addItem()}
+              placeholder="Title…"
+              style={{
+                width: "100%",
+                background: "#1A1816",
+                border: "1px solid #33302B",
+                borderRadius: 8,
+                outline: "none",
+                color: "#EDE8DF",
+                fontSize: 14,
+                padding: "10px 12px",
+                marginBottom: 10,
+                boxSizing: "border-box",
+              }}
+            />
 
-      {vue === "vente" && (
-        <div style={styles.grilleVente}>
-          <div style={styles.panneauProduits}>
-            <div style={styles.grilleProduits}>
-              {produits.map((produit) => {
-                const dispo = stockDisponible(produit);
-                return (
-                  <div key={produit.id} style={styles.carteProduit}>
-                    <div style={styles.nomProduit}>{produit.nom}</div>
-                    <div style={styles.categorieProduit}>{produit.categorie}</div>
-                    <div style={styles.prixCaisseTxt}>{fmt(produit.prix_caisse)} HTG / caisse</div>
-                    <div
-                      style={{ ...styles.stockTxt, color: dispo <= 0 ? "#B3261E" : "#4A5D45" }}
-                    >
-                      Stock: {fmt(dispo)} caisse(s)
-                    </div>
-                    <div style={styles.fractionsRow}>
-                      {FRACTIONS.map((f) => (
-                        <button
-                          key={f.label}
-                          disabled={dispo < f.valeur}
-                          onClick={() => ajouterAuPanier(produit, f)}
-                          style={{
-                            ...styles.btnFraction,
-                            ...(dispo < f.valeur ? styles.btnFractionDisabled : {}),
-                          }}
-                        >
-                          {f.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 14 }}>
+              <select
+                value={draftType}
+                onChange={(e) => setDraftType(e.target.value)}
+                style={selectStyle(typeMap[draftType].color)}
+              >
+                {Object.entries(
+                  TYPES.reduce((acc, t) => {
+                    (acc[t.family] = acc[t.family] || []).push(t);
+                    return acc;
+                  }, {})
+                ).map(([family, ts]) => (
+                  <optgroup key={family} label={family}>
+                    {ts.map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.label}
+                      </option>
+                    ))}
+                  </optgroup>
+                ))}
+              </select>
 
-          <div style={styles.panneauPanier}>
-            <div style={styles.panierTitre}>Panier</div>
-            <div style={styles.panierListe}>
-              {panier.length === 0 && <div style={styles.panierVide}>Aucun article sélectionné</div>}
-              {panier.map((l) => (
-                <div key={l.ligneId} style={styles.ligneItem}>
-                  <div style={styles.ligneInfo}>
-                    <div style={styles.ligneNom}>
-                      {l.nom} — {l.fractionLabel}
-                    </div>
-                    <div style={styles.lignePrix}>
-                      {fmt(l.prixUnitaire)} HTG x {l.qte} = {fmt(l.prixUnitaire * l.qte)} HTG
-                    </div>
-                  </div>
-                  <div style={styles.ligneActions}>
-                    <button style={styles.btnQte} onClick={() => changerQte(l.ligneId, -1)}>
-                      −
-                    </button>
-                    <span style={styles.qteTxt}>{l.qte}</span>
-                    <button style={styles.btnQte} onClick={() => changerQte(l.ligneId, 1)}>
-                      +
-                    </button>
-                    <button style={styles.btnRetirer} onClick={() => retirerLigne(l.ligneId)}>
-                      ✕
-                    </button>
-                  </div>
-                </div>
-              ))}
+              <select value={draftPriority} onChange={(e) => setDraftPriority(e.target.value)} style={selectStyle("#4A4539")}>
+                {PRIORITIES.map((p) => (
+                  <option key={p} value={p}>
+                    {p === "med" ? "Med priority" : `${p[0].toUpperCase()}${p.slice(1)} priority`}
+                  </option>
+                ))}
+              </select>
             </div>
-            <div style={styles.panierFooter}>
-              <div style={styles.totalRow}>
-                <span>Total</span>
-                <span style={styles.totalMontant}>{fmt(totalPanier)} HTG</span>
-              </div>
-              <div style={styles.panierBtns}>
-                <button style={styles.btnVider} onClick={viderPanier} disabled={panier.length === 0}>
-                  Vider
-                </button>
-                <button style={styles.btnEncaisser} onClick={ouvrirCheckout} disabled={panier.length === 0}>
-                  Encaisser
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
-      {vue === "stock" && estPDG && (
-        <div style={styles.panneauStock}>
-          <div style={styles.stockHeader}>
-            <div style={styles.panierTitre}>Gestion du stock</div>
-            <button style={styles.btnAjouter} onClick={ajouterProduit}>
-              + Ajouter un produit
+            <button
+              onClick={addItem}
+              style={{
+                width: "100%",
+                background: "#C9A24B",
+                border: "none",
+                borderRadius: 8,
+                color: "#1A1816",
+                fontSize: 14,
+                fontWeight: 600,
+                padding: "11px 0",
+                cursor: "pointer",
+              }}
+            >
+              Add
             </button>
           </div>
-          <table style={styles.table}>
-            <thead>
-              <tr>
-                <th style={styles.th}>Nom</th>
-                <th style={styles.th}>Catégorie</th>
-                <th style={styles.th}>Prix / caisse (HTG)</th>
-                <th style={styles.th}>Stock (caisses)</th>
-                <th style={styles.th}></th>
-              </tr>
-            </thead>
-            <tbody>
-              {produits.map((p) => (
-                <tr key={p.id}>
-                  <td style={styles.td}>
-                    <input
-                      style={styles.inputTable}
-                      value={p.nom}
-                      onChange={(e) => majProduit(p.id, "nom", e.target.value)}
-                    />
-                  </td>
-                  <td style={styles.td}>
-                    <input
-                      style={styles.inputTable}
-                      value={p.categorie}
-                      onChange={(e) => majProduit(p.id, "categorie", e.target.value)}
-                    />
-                  </td>
-                  <td style={styles.td}>
-                    <input
-                      type="number"
-                      style={styles.inputTable}
-                      value={p.prix_caisse}
-                      onChange={(e) => majProduit(p.id, "prix_caisse", parseFloat(e.target.value) || 0)}
-                    />
-                  </td>
-                  <td style={styles.td}>
-                    <input
-                      type="number"
-                      style={styles.inputTable}
-                      value={p.stock}
-                      onChange={(e) => majProduit(p.id, "stock", parseFloat(e.target.value) || 0)}
-                    />
-                  </td>
-                  <td style={styles.td}>
-                    <button style={styles.btnRetirer} onClick={() => supprimerProduit(p.id)}>
-                      ✕
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
         </div>
       )}
 
-      {vue === "utilisateurs" && estPDG && (
-        <div style={styles.panneauStock}>
-          <div style={styles.stockHeader}>
-            <div style={styles.panierTitre}>Utilisateurs</div>
-          </div>
-          <table style={styles.table}>
-            <thead>
-              <tr>
-                <th style={styles.th}>Nom</th>
-                <th style={styles.th}>Rôle</th>
-              </tr>
-            </thead>
-            <tbody>
-              {profils.map((p) => (
-                <tr key={p.id}>
-                  <td style={styles.td}>{p.nom_complet}</td>
-                  <td style={styles.td}>
-                    <select
-                      style={styles.inputTable}
-                      value={p.role}
-                      onChange={(e) => changerRole(p.id, e.target.value)}
-                    >
-                      <option value="vendeur">Vendeur(se)</option>
-                      <option value="pdg">PDG</option>
-                    </select>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          <div style={styles.noteUtilisateurs}>
-            Pour ajouter un nouveau vendeur, demande-lui de créer son compte depuis l'écran de
-            connexion (onglet "Créer un compte"). Il apparaîtra ici avec le rôle "Vendeur(se)" par
-            défaut.
-          </div>
-        </div>
-      )}
+      {/* Floating action button */}
+      <button
+        onClick={() => setShowAddModal(true)}
+        aria-label="Add task"
+        style={{
+          position: "fixed",
+          bottom: 24,
+          right: 24,
+          width: 52,
+          height: 52,
+          borderRadius: "50%",
+          background: "#C9A24B",
+          border: "none",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          cursor: "pointer",
+          boxShadow: "0 6px 18px rgba(0,0,0,0.45)",
+          zIndex: 40,
+        }}
+      >
+        <Plus size={24} color="#1A1816" strokeWidth={2.5} />
+      </button>
 
-      {vue === "historique" && (
-        <div style={styles.panneauStock}>
-          <div style={styles.stockHeader}>
-            <div style={styles.panierTitre}>
-              {estPDG ? "Historique des ventes (tous les vendeurs)" : "Mes ventes"}
-            </div>
-            <div style={styles.totalJourTxt}>
-              Total: <strong>{fmt(totalJour)} HTG</strong> ({ventesVisibles.length} vente(s))
-            </div>
-          </div>
-          {ventesVisibles.length === 0 && <div style={styles.panierVide}>Aucune vente enregistrée</div>}
-          {ventesVisibles.map((v) => (
-            <div key={v.id} style={styles.carteVente}>
-              <div style={styles.venteHeader}>
-                <span>{new Date(v.created_at).toLocaleString("fr-HT")}</span>
-                {estPDG && <span>{v.profiles?.nom_complet}</span>}
-                <span>{v.mode_paiement}</span>
-                <span style={styles.venteTotal}>{fmt(v.total)} HTG</span>
-              </div>
-              <div style={styles.venteLignes}>
-                {(v.vente_lignes || []).map((l) => (
-                  <div key={l.id} style={styles.venteLigneTxt}>
-                    {l.nom} — {l.fraction_label} x {l.qte}
-                  </div>
-                ))}
-              </div>
-            </div>
+      {/* Filters — not shown on a habit's board, since it's a calendar, not a filtered list */}
+      {!(currentItem && currentItem.type === "habits") && (
+        <div style={{ display: "flex", gap: 6, marginBottom: 14 }}>
+          {[{ id: "all", label: "All" }, { id: "open", label: "Open" }, { id: "done", label: "Done" }].map((f) => (
+            <button
+              key={f.id}
+              onClick={() => setFilter(f.id)}
+              style={{
+                fontSize: 11.5,
+                padding: "5px 10px",
+                borderRadius: 7,
+                border: "1px solid",
+                borderColor: filter === f.id ? "#EDE8DF" : "#2E2B26",
+                background: filter === f.id ? "#EDE8DF" : "transparent",
+                color: filter === f.id ? "#1A1816" : "#8A8478",
+                cursor: "pointer",
+                fontWeight: filter === f.id ? 600 : 400,
+              }}
+            >
+              {f.label}
+            </button>
           ))}
         </div>
       )}
 
-      {modalCheckout && (
-        <div style={styles.overlay}>
-          <div style={styles.modal}>
-            <div style={styles.modalTitre}>Encaissement</div>
-            <div style={styles.modalTotal}>{fmt(totalPanier)} HTG</div>
-            <div style={styles.modeRow}>
-              {MODES_PAIEMENT.map((m) => (
-                <button
-                  key={m}
-                  onClick={() => setModePaiement(m)}
-                  style={{ ...styles.btnMode, ...(modePaiement === m ? styles.btnModeActif : {}) }}
-                >
-                  {m}
-                </button>
-              ))}
+      {/* Root view: grouped by type */}
+      {!currentItem && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          {(!groupedRoot || groupedRoot.length === 0) && (
+            <div style={{ padding: "28px 10px", textAlign: "center", color: "#5E594E", fontSize: 13 }}>
+              Nothing here. Log something above to start the ledger.
             </div>
-            {modePaiement === "Cash" && (
-              <div style={styles.champGroupe}>
-                <label style={styles.label}>Montant reçu (HTG)</label>
-                <input
-                  type="number"
-                  style={styles.inputModal}
-                  value={montantRecu}
-                  onChange={(e) => setMontantRecu(e.target.value)}
-                  placeholder="0"
-                  autoFocus
-                />
-                {montantRecu !== "" && (
-                  <div style={styles.monnaieTxt}>
-                    {(parseFloat(montantRecu) || 0) - totalPanier >= 0
-                      ? `Monnaie à rendre: ${fmt((parseFloat(montantRecu) || 0) - totalPanier)} HTG`
-                      : `Manque: ${fmt(totalPanier - (parseFloat(montantRecu) || 0))} HTG`}
-                  </div>
-                )}
-              </div>
-            )}
-            {erreur && <div style={styles.erreurTxt}>{erreur}</div>}
-            <div style={styles.modalBtns}>
-              <button style={styles.btnVider} onClick={() => setModalCheckout(false)}>
-                Annuler
-              </button>
-              <button
-                style={styles.btnEncaisser}
-                onClick={confirmerVente}
-                disabled={
-                  enTraitement || (modePaiement === "Cash" && (parseFloat(montantRecu) || 0) < totalPanier)
-                }
-              >
-                {enTraitement ? "…" : "Confirmer"}
-              </button>
-            </div>
-          </div>
+          )}
+          {groupedRoot &&
+            groupedRoot.map(({ type, entries }) => {
+              const isCollapsed = collapsed[type.id];
+              return (
+                <div key={type.id}>
+                  <button
+                    onClick={() => toggleCollapsed(type.id)}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 6,
+                      background: "transparent",
+                      border: "none",
+                      cursor: "pointer",
+                      padding: "2px 0 8px",
+                      width: "100%",
+                      textAlign: "left",
+                    }}
+                  >
+                    {isCollapsed ? <ChevronRight size={13} color="#6E6858" /> : <ChevronDownIcon />}
+                    <span style={{ width: 7, height: 7, borderRadius: "50%", background: type.color, flexShrink: 0 }} />
+                    <span style={{ fontSize: 12.5, fontWeight: 600, color: "#C9C3B6", letterSpacing: "0.01em" }}>
+                      {type.label}
+                    </span>
+                    <span style={{ fontSize: 11, color: "#5E594E", fontFamily: "ui-monospace, monospace" }}>
+                      {entries.length}
+                    </span>
+                  </button>
+
+                  {!isCollapsed && (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                      {entries.map((it) => (
+                        <Row
+                          key={it.id}
+                          item={it}
+                          progressOf={progressOf}
+                          hasChildren={(childrenOf[it.id] || []).length > 0 || it.type === "habits"}
+                          justStamped={justStamped}
+                          toggleItem={toggleItem}
+                          removeItem={removeItem}
+                          onOpen={() => drillInto(it.id)}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
         </div>
       )}
 
-      {recu && (
-        <div style={styles.overlay}>
-          <div style={styles.modal}>
-            <div style={styles.modalTitre}>Reçu de vente</div>
-            <div style={styles.recuDate}>{recu.date.toLocaleString("fr-HT")}</div>
-            <div style={styles.recuLignes}>
-              {recu.lignes.map((l) => (
-                <div key={l.ligneId} style={styles.recuLigne}>
-                  <span>
-                    {l.nom} — {l.fractionLabel} x {l.qte}
-                  </span>
-                  <span>{fmt(l.prixUnitaire * l.qte)} HTG</span>
-                </div>
-              ))}
+      {/* Drilled-in view */}
+      {currentItem && currentItem.type === "habits" && (
+        <HabitBoard item={currentItem} onToggleDay={(dayKey) => toggleHabitDay(currentItem.id, dayKey)} />
+      )}
+
+      {currentItem && currentItem.type === "projects" && (
+        <PurposePanel item={currentItem} onChange={(text) => updatePurpose(currentItem.id, text)} />
+      )}
+
+      {currentItem && currentItem.type === "milestones" && (
+        <MilestonePanel
+          item={currentItem}
+          progress={progressOf(currentItem.id)}
+          onChange={(dateStr) => updateTargetDate(currentItem.id, dateStr)}
+        />
+      )}
+
+      {currentItem && currentItem.type !== "habits" && (
+        <NotesPanel item={currentItem} onChange={(text) => updateNotes(currentItem.id, text)} />
+      )}
+
+      {currentItem && currentItem.type !== "habits" && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          {filteredChildren.length === 0 && (
+            <div style={{ padding: "28px 10px", textAlign: "center", color: "#5E594E", fontSize: 13 }}>
+              No subtasks yet. Add one above.
             </div>
-            <div style={styles.recuTotalRow}>
-              <span>Total</span>
-              <span>{fmt(recu.total)} HTG</span>
-            </div>
-            <div style={styles.recuTotalRow}>
-              <span>Mode</span>
-              <span>{recu.modePaiement}</span>
-            </div>
-            {recu.modePaiement === "Cash" && (
-              <>
-                <div style={styles.recuTotalRow}>
-                  <span>Reçu</span>
-                  <span>{fmt(recu.recu)} HTG</span>
-                </div>
-                <div style={styles.recuTotalRow}>
-                  <span>Monnaie</span>
-                  <span>{fmt(recu.monnaie)} HTG</span>
-                </div>
-              </>
-            )}
-            <button style={styles.btnEncaisser} onClick={() => setRecu(null)}>
-              Nouvelle vente
-            </button>
+          )}
+          {filteredChildren.map((it) => (
+            <Row
+              key={it.id}
+              item={it}
+              progressOf={progressOf}
+              hasChildren={(childrenOf[it.id] || []).length > 0 || it.type === "habits"}
+              justStamped={justStamped}
+              toggleItem={toggleItem}
+              removeItem={removeItem}
+              onOpen={() => drillInto(it.id)}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* A habit can still carry sub-tasks (e.g. supporting steps); show them below the board. */}
+      {currentItem && currentItem.type === "habits" && filteredChildren.length > 0 && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 18 }}>
+          <div style={{ fontSize: 11.5, fontWeight: 600, color: "#8A8478", letterSpacing: "0.02em", marginBottom: 2 }}>
+            RELATED TASKS
           </div>
+          {filteredChildren.map((it) => (
+            <Row
+              key={it.id}
+              item={it}
+              progressOf={progressOf}
+              hasChildren={(childrenOf[it.id] || []).length > 0 || it.type === "habits"}
+              justStamped={justStamped}
+              toggleItem={toggleItem}
+              removeItem={removeItem}
+              onOpen={() => drillInto(it.id)}
+            />
+          ))}
         </div>
       )}
     </div>
   );
 }
 
-// ---------- Écran de connexion : sélection d'utilisateur ----------
-const UTILISATEURS = [
-  { nom: "Bwb", email: "pdg@spc.com" },
-  { nom: "Wadeline", email: "wadeline@spc.com" },
+const WEEKDAY_LABELS = ["S", "M", "T", "W", "T", "F", "S"];
+const MONTH_LABELS = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
 ];
 
-function EcranConnexion() {
-  const [utilisateurChoisi, setUtilisateurChoisi] = useState(null);
-  const [motDePasse, setMotDePasse] = useState("");
-  const [erreur, setErreur] = useState("");
-  const [enTraitement, setEnTraitement] = useState(false);
+const COVER_PRESETS = [
+  { id: "brass", css: "linear-gradient(135deg, #C9A24B, #6E5730)" },
+  { id: "teal", css: "linear-gradient(135deg, #5B8A82, #2E4A46)" },
+  { id: "rose", css: "linear-gradient(135deg, #C97B7B, #6E3A3A)" },
+  { id: "indigo", css: "linear-gradient(135deg, #7C7BA6, #3A3A6E)" },
+  { id: "ember", css: "linear-gradient(135deg, #C9614B, #6E2E22)" },
+  { id: "forest", css: "linear-gradient(135deg, #7A9B76, #37452F)" },
+  { id: "slate", css: "linear-gradient(135deg, #7C8A94, #2E3438)" },
+];
 
-  async function soumettre(e) {
-    e.preventDefault();
-    setErreur("");
-    setEnTraitement(true);
-    const { error } = await supabase.auth.signInWithPassword({
-      email: utilisateurChoisi.email,
-      password: motDePasse,
-    });
-    if (error) setErreur("Mot de passe incorrect.");
-    setEnTraitement(false);
-  }
-
-  if (!utilisateurChoisi) {
-    return (
-      <div style={styles.centre}>
-        <div style={styles.formConnexion}>
-          <div style={styles.titreConnexion}>POS — Vente de viande</div>
-          <div style={styles.label}>Qui êtes-vous ?</div>
-          <div style={styles.pickerListe}>
-            {UTILISATEURS.map((u) => (
-              <button
-                key={u.email}
-                type="button"
-                style={styles.btnUtilisateur}
-                onClick={() => {
-                  setErreur("");
-                  setMotDePasse("");
-                  setUtilisateurChoisi(u);
-                }}
-              >
-                {u.nom}
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-    );
-  }
+function ProjectCover({ item, onChange }) {
+  const [pickerOpen, setPickerOpen] = useState(false);
 
   return (
-    <div style={styles.centre}>
-      <form onSubmit={soumettre} style={styles.formConnexion}>
-        <div style={styles.titreConnexion}>POS — Vente de viande</div>
-        <div style={styles.champGroupe}>
-          <label style={styles.label}>Utilisateur</label>
-          <div style={styles.utilisateurChoisiTxt}>{utilisateurChoisi.nom}</div>
-        </div>
-        <div style={styles.champGroupe}>
-          <label style={styles.label}>Mot de passe</label>
-          <input
-            type="password"
-            autoFocus
-            style={styles.inputModal}
-            value={motDePasse}
-            onChange={(e) => setMotDePasse(e.target.value)}
-            placeholder="••••••••"
-          />
-        </div>
-        {erreur && <div style={styles.erreurTxt}>{erreur}</div>}
-        <div style={styles.modalBtns}>
+    <div style={{ marginBottom: 12 }}>
+      {item.cover ? (
+        <div
+          style={{
+            position: "relative",
+            height: 96,
+            borderRadius: 10,
+            background: item.cover,
+            marginBottom: pickerOpen ? 8 : 0,
+          }}
+        >
           <button
-            type="button"
-            style={styles.btnVider}
-            onClick={() => setUtilisateurChoisi(null)}
+            onClick={() => setPickerOpen((o) => !o)}
+            style={{
+              position: "absolute",
+              bottom: 8,
+              right: 8,
+              background: "rgba(26,24,22,0.65)",
+              border: "1px solid rgba(255,255,255,0.15)",
+              borderRadius: 6,
+              color: "#F3EEE3",
+              fontSize: 11,
+              padding: "5px 9px",
+              cursor: "pointer",
+            }}
           >
-            Retour
-          </button>
-          <button type="submit" style={styles.btnEncaisser} disabled={enTraitement}>
-            {enTraitement ? "…" : "Se connecter"}
+            Change cover
           </button>
         </div>
-      </form>
+      ) : (
+        <button
+          onClick={() => setPickerOpen((o) => !o)}
+          style={{
+            width: "100%",
+            background: "transparent",
+            border: "1px dashed #3A362F",
+            borderRadius: 10,
+            color: "#6E6858",
+            fontSize: 12,
+            padding: "8px 12px",
+            cursor: "pointer",
+            marginBottom: pickerOpen ? 8 : 0,
+          }}
+        >
+          + Add cover
+        </button>
+      )}
+
+      {pickerOpen && (
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+          {COVER_PRESETS.map((p) => (
+            <button
+              key={p.id}
+              onClick={() => {
+                onChange(p.css);
+                setPickerOpen(false);
+              }}
+              aria-label={p.id}
+              style={{
+                width: 26,
+                height: 26,
+                borderRadius: 6,
+                background: p.css,
+                border: item.cover === p.css ? "2px solid #F3EEE3" : "1px solid #33302B",
+                cursor: "pointer",
+                padding: 0,
+              }}
+            />
+          ))}
+          {item.cover && (
+            <button
+              onClick={() => {
+                onChange(null);
+                setPickerOpen(false);
+              }}
+              style={{
+                background: "transparent",
+                border: "none",
+                color: "#948E80",
+                fontSize: 11.5,
+                cursor: "pointer",
+                padding: "4px 6px",
+              }}
+            >
+              Remove
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }
 
-// ---------- Styles ----------
-const styles = {
-  app: { fontFamily: "system-ui, -apple-system, sans-serif", background: "#F5F3EE", minHeight: "100vh", color: "#1A1A1A" },
-  centre: { minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#F5F3EE", fontFamily: "system-ui, sans-serif" },
-  formConnexion: { background: "#fff", border: "2px solid #000", padding: 24, width: 340, maxWidth: "100%", boxSizing: "border-box" },
-  titreConnexion: { fontSize: 17, fontWeight: 700, marginBottom: 16, textAlign: "center" },
+function PurposePanel({ item, onChange }) {
+  const [expanded, setExpanded] = useState(true);
+  const color = typeMap[item.type]?.color || "#5B8A82";
 
-  header: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 24px", background: "#1A1A1A", color: "#F5F3EE", borderBottom: "2px solid #000", flexWrap: "wrap", gap: 12 },
-  titre: { fontSize: 18, fontWeight: 700 },
-  sousTitre: { fontSize: 12, opacity: 0.7 },
-  nav: { display: "flex", gap: 6, alignItems: "center" },
-  navBtn: { padding: "8px 16px", background: "transparent", color: "#F5F3EE", border: "1px solid #555", borderRadius: 0, cursor: "pointer", fontSize: 13 },
-  navBtnActif: { background: "#F5F3EE", color: "#1A1A1A", fontWeight: 700 },
-  btnDeconnexion: { padding: "8px 14px", background: "transparent", color: "#F5F3EE", border: "1px solid #B3261E", borderRadius: 0, cursor: "pointer", fontSize: 12, marginLeft: 8 },
+  return (
+    <div style={{ marginBottom: 16 }}>
+      <button
+        onClick={() => setExpanded((e) => !e)}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 6,
+          background: "transparent",
+          border: "none",
+          cursor: "pointer",
+          padding: "2px 0 8px",
+          width: "100%",
+          textAlign: "left",
+        }}
+      >
+        {expanded ? <ChevronDownIcon /> : <ChevronRight size={13} color="#6E6858" />}
+        <span style={{ fontSize: 12.5, fontWeight: 600, color: "#C9C3B6", letterSpacing: "0.01em" }}>
+          Purpose / Why
+        </span>
+      </button>
+      {expanded && (
+        <div
+          style={{
+            background: `${color}14`,
+            border: `1px solid ${color}44`,
+            borderRadius: 10,
+            padding: "12px 14px",
+          }}
+        >
+          <textarea
+            value={item.purpose || ""}
+            onChange={(e) => onChange(e.target.value)}
+            placeholder="Why does this project exist? What's the reason you're building it?"
+            rows={4}
+            style={{
+              width: "100%",
+              background: "transparent",
+              border: "none",
+              outline: "none",
+              color: "#EDE8DF",
+              fontSize: 13.5,
+              lineHeight: 1.6,
+              fontStyle: item.purpose ? "normal" : "italic",
+              resize: "vertical",
+              boxSizing: "border-box",
+              fontFamily: "inherit",
+            }}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
 
-  grilleVente: { display: "grid", gridTemplateColumns: "1fr 360px", gap: 0, minHeight: "calc(100vh - 64px)" },
-  panneauProduits: { padding: 20 },
-  grilleProduits: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 12 },
-  carteProduit: { background: "#fff", border: "1px solid #000", padding: 14 },
-  nomProduit: { fontSize: 16, fontWeight: 700 },
-  categorieProduit: { fontSize: 11, color: "#666", marginBottom: 8 },
-  prixCaisseTxt: { fontSize: 13, marginBottom: 4 },
-  stockTxt: { fontSize: 12, marginBottom: 10, fontWeight: 600 },
-  fractionsRow: { display: "flex", gap: 6, flexWrap: "wrap" },
-  btnFraction: { flex: "1 1 auto", padding: "8px 6px", background: "#1A1A1A", color: "#fff", border: "1px solid #000", borderRadius: 0, cursor: "pointer", fontSize: 12 },
-  btnFractionDisabled: { background: "#ccc", color: "#888", cursor: "not-allowed", borderColor: "#999" },
+function daysUntil(dateStr) {
+  if (!dateStr) return null;
+  const target = new Date(`${dateStr}T00:00:00`);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return Math.round((target - today) / 86400000);
+}
 
-  panneauPanier: { background: "#fff", borderLeft: "2px solid #000", display: "flex", flexDirection: "column", padding: 16 },
-  panierTitre: { fontSize: 16, fontWeight: 700, marginBottom: 12 },
-  panierListe: { flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", gap: 8 },
-  panierVide: { fontSize: 13, color: "#888", padding: "20px 0", textAlign: "center" },
-  ligneItem: { border: "1px solid #ddd", padding: 8, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 },
-  ligneInfo: { flex: 1 },
-  ligneNom: { fontSize: 13, fontWeight: 600 },
-  lignePrix: { fontSize: 11, color: "#666" },
-  ligneActions: { display: "flex", alignItems: "center", gap: 4 },
-  btnQte: { width: 24, height: 24, border: "1px solid #000", background: "#fff", borderRadius: 0, cursor: "pointer", fontSize: 14, lineHeight: 1 },
-  qteTxt: { minWidth: 16, textAlign: "center", fontSize: 13, fontWeight: 600 },
-  btnRetirer: { width: 24, height: 24, border: "1px solid #B3261E", background: "#fff", color: "#B3261E", borderRadius: 0, cursor: "pointer", fontSize: 12, marginLeft: 4 },
+function MilestonePanel({ item, progress, onChange }) {
+  const [expanded, setExpanded] = useState(true);
+  const color = typeMap[item.type]?.color || "#5B5B9B";
+  const days = daysUntil(item.targetDate);
 
-  panierFooter: { borderTop: "2px solid #000", paddingTop: 12, marginTop: 12 },
-  totalRow: { display: "flex", justifyContent: "space-between", fontSize: 15, fontWeight: 700, marginBottom: 12 },
-  totalMontant: { fontSize: 20 },
-  panierBtns: { display: "flex", gap: 8 },
-  btnVider: { flex: 1, padding: "10px 0", background: "#fff", border: "1px solid #000", borderRadius: 0, cursor: "pointer", fontSize: 13 },
-  btnEncaisser: { flex: 2, padding: "10px 0", background: "#1A1A1A", color: "#fff", border: "1px solid #000", borderRadius: 0, cursor: "pointer", fontSize: 13, fontWeight: 700, width: "100%" },
+  let statusText = "No target date set";
+  let statusColor = "#6E6858";
+  if (days !== null) {
+    if (days > 0) {
+      statusText = `${days} day${days === 1 ? "" : "s"} to go`;
+      statusColor = color;
+    } else if (days === 0) {
+      statusText = "Today";
+      statusColor = "#C9A24B";
+    } else {
+      statusText = `${Math.abs(days)} day${Math.abs(days) === 1 ? "" : "s"} overdue`;
+      statusColor = "#C9614B";
+    }
+  }
 
-  panneauStock: { padding: 20 },
-  stockHeader: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, flexWrap: "wrap", gap: 8 },
-  btnAjouter: { padding: "8px 14px", background: "#1A1A1A", color: "#fff", border: "1px solid #000", borderRadius: 0, cursor: "pointer", fontSize: 13 },
-  table: { width: "100%", borderCollapse: "collapse", background: "#fff" },
-  th: { textAlign: "left", padding: 8, border: "1px solid #000", fontSize: 12, background: "#eee" },
-  td: { padding: 6, border: "1px solid #ccc" },
-  inputTable: { width: "100%", border: "1px solid #ccc", borderRadius: 0, padding: 6, fontSize: 13, boxSizing: "border-box" },
-  noteUtilisateurs: { fontSize: 12, color: "#666", marginTop: 12 },
-  cartesKPI: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12, marginBottom: 20 },
-  carteKPI: { background: "#fff", border: "1px solid #000", padding: 16 },
-  kpiLabel: { fontSize: 12, color: "#666", marginBottom: 6 },
-  kpiValeur: { fontSize: 22, fontWeight: 700 },
-  kpiSousTexte: { fontSize: 11, color: "#888", marginTop: 4 },
-  grilleTableau: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 12 },
-  blocTableau: { background: "#fff", border: "1px solid #000", padding: 16 },
-  blocTitre: { fontSize: 14, fontWeight: 700, marginBottom: 10 },
-  ligneBloc: { display: "flex", justifyContent: "space-between", fontSize: 13, padding: "6px 0", borderBottom: "1px solid #eee" },
+  const { done = 0, total = 0 } = progress || {};
+  const pct = total > 0 ? Math.round((done / total) * 100) : 0;
 
-  totalJourTxt: { fontSize: 13 },
-  carteVente: { background: "#fff", border: "1px solid #000", padding: 12, marginBottom: 8 },
-  venteHeader: { display: "flex", justifyContent: "space-between", fontSize: 12, color: "#666", marginBottom: 6, gap: 8, flexWrap: "wrap" },
-  venteTotal: { color: "#1A1A1A", fontWeight: 700 },
-  venteLignes: { display: "flex", flexDirection: "column", gap: 2 },
-  venteLigneTxt: { fontSize: 12 },
+  return (
+    <div style={{ marginBottom: 16 }}>
+      <button
+        onClick={() => setExpanded((e) => !e)}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 6,
+          background: "transparent",
+          border: "none",
+          cursor: "pointer",
+          padding: "2px 0 8px",
+          width: "100%",
+          textAlign: "left",
+        }}
+      >
+        {expanded ? <ChevronDownIcon /> : <ChevronRight size={13} color="#6E6858" />}
+        <span style={{ fontSize: 12.5, fontWeight: 600, color: "#C9C3B6", letterSpacing: "0.01em" }}>
+          Checkpoint
+        </span>
+        {!expanded && (
+          <span style={{ fontSize: 11, color: statusColor, fontFamily: "ui-monospace, monospace" }}>
+            {statusText}
+          </span>
+        )}
+      </button>
+      {expanded && (
+        <div
+          style={{
+            background: `${color}14`,
+            border: `1px solid ${color}44`,
+            borderRadius: 10,
+            padding: "12px 14px",
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              flexWrap: "wrap",
+              gap: 10,
+            }}
+          >
+            <input
+              type="date"
+              value={item.targetDate || ""}
+              onChange={(e) => onChange(e.target.value)}
+              style={{
+                background: "#1A1816",
+                border: "1px solid #33302B",
+                borderRadius: 8,
+                outline: "none",
+                color: "#EDE8DF",
+                fontSize: 13.5,
+                padding: "8px 10px",
+                fontFamily: "inherit",
+                colorScheme: "dark",
+              }}
+            />
+            <span
+              style={{
+                fontSize: 13,
+                fontWeight: 600,
+                color: statusColor,
+                fontFamily: "ui-monospace, monospace",
+              }}
+            >
+              {statusText}
+            </span>
+          </div>
 
-  overlay: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16, zIndex: 50 },
-  modal: { background: "#fff", border: "2px solid #000", padding: 20, width: 340, maxWidth: "100%" },
-  modalTitre: { fontSize: 16, fontWeight: 700, marginBottom: 8 },
-  modalTotal: { fontSize: 26, fontWeight: 700, marginBottom: 16 },
-  modeRow: { display: "flex", gap: 6, marginBottom: 16 },
-  btnMode: { flex: 1, padding: "8px 4px", border: "1px solid #000", background: "#fff", borderRadius: 0, cursor: "pointer", fontSize: 12 },
-  btnModeActif: { background: "#1A1A1A", color: "#fff" },
-  champGroupe: { marginBottom: 16 },
-  label: { fontSize: 12, color: "#666", display: "block", marginBottom: 4 },
-  inputModal: { width: "100%", padding: 10, border: "1px solid #000", borderRadius: 0, fontSize: 16, boxSizing: "border-box" },
-  monnaieTxt: { fontSize: 13, marginTop: 8, fontWeight: 600 },
-  modalBtns: { display: "flex", gap: 8 },
-  erreurTxt: { fontSize: 12, color: "#B3261E", marginBottom: 12 },
-  pickerListe: { display: "flex", flexDirection: "column", gap: 8, marginTop: 12 },
-  btnUtilisateur: { padding: "14px 0", background: "#fff", border: "1px solid #000", borderRadius: 0, cursor: "pointer", fontSize: 15, fontWeight: 700 },
-  utilisateurChoisiTxt: { fontSize: 15, fontWeight: 700, padding: "8px 0" },
+          <div style={{ marginTop: 14 }}>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "baseline",
+                justifyContent: "space-between",
+                marginBottom: 6,
+              }}
+            >
+              <span style={{ fontSize: 11.5, color: "#948E80" }}>
+                {total > 0 ? "Tasks toward this milestone" : "No subtasks yet"}
+              </span>
+              <span
+                style={{
+                  fontSize: 11.5,
+                  fontFamily: "ui-monospace, monospace",
+                  color: total > 0 && done === total ? "#7A9B76" : "#948E80",
+                }}
+              >
+                {done}/{total} · {pct}%
+              </span>
+            </div>
+            <div
+              style={{
+                width: "100%",
+                height: 8,
+                borderRadius: 999,
+                background: "#1A1816",
+                border: "1px solid #33302B",
+                overflow: "hidden",
+              }}
+            >
+              <div
+                style={{
+                  width: `${pct}%`,
+                  height: "100%",
+                  borderRadius: 999,
+                  background: total > 0 && done === total ? "#7A9B76" : color,
+                  transition: "width 0.3s ease",
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
-  recuDate: { fontSize: 12, color: "#666", marginBottom: 12 },
-  recuLignes: { borderTop: "1px solid #ccc", borderBottom: "1px solid #ccc", padding: "8px 0", marginBottom: 8, display: "flex", flexDirection: "column", gap: 4 },
-  recuLigne: { display: "flex", justifyContent: "space-between", fontSize: 13 },
-  recuTotalRow: { display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 4 },
-};
+function NotesPanel({ item, onChange }) {
+  const [expanded, setExpanded] = useState(!!item.notes);
+  const color = typeMap[item.type]?.color || "#7C7BA6";
+
+  return (
+    <div style={{ marginBottom: 16 }}>
+      <button
+        onClick={() => setExpanded((e) => !e)}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 6,
+          background: "transparent",
+          border: "none",
+          cursor: "pointer",
+          padding: "2px 0 8px",
+          width: "100%",
+          textAlign: "left",
+        }}
+      >
+        {expanded ? <ChevronDownIcon /> : <ChevronRight size={13} color="#6E6858" />}
+        <span style={{ fontSize: 12.5, fontWeight: 600, color: "#C9C3B6", letterSpacing: "0.01em" }}>Notes</span>
+        {!expanded && item.notes && (
+          <span
+            style={{
+              fontSize: 11,
+              color: "#6E6858",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+              flex: 1,
+              minWidth: 0,
+            }}
+          >
+            {item.notes}
+          </span>
+        )}
+      </button>
+      {expanded && (
+        <textarea
+          value={item.notes || ""}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder="Jot down ideas, context, links…"
+          rows={4}
+          style={{
+            width: "100%",
+            background: "#211E1B",
+            border: `1px solid #33302B`,
+            borderLeft: `3px solid ${color}`,
+            borderRadius: 8,
+            color: "#EDE8DF",
+            fontSize: 13.5,
+            lineHeight: 1.5,
+            padding: "10px 12px",
+            outline: "none",
+            resize: "vertical",
+            boxSizing: "border-box",
+            fontFamily: "inherit",
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+function HabitBoard({ item, onToggleDay }) {
+  const today = new Date();
+  const [viewYear, setViewYear] = useState(today.getFullYear());
+  const [viewMonth, setViewMonth] = useState(today.getMonth());
+
+  const completions = item.completions || [];
+  const color = typeMap[item.type]?.color || "#7A9B76";
+  const todayStr = todayKey();
+
+  const firstOfMonth = new Date(viewYear, viewMonth, 1);
+  const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
+  const leadingBlanks = firstOfMonth.getDay();
+  const isCurrentMonth = viewYear === today.getFullYear() && viewMonth === today.getMonth();
+
+  const monthCompletedCount = completions.filter((k) => k.startsWith(
+    `${viewYear}-${String(viewMonth + 1).padStart(2, "0")}`
+  )).length;
+  const streak = currentStreak(completions);
+
+  const goPrevMonth = () => {
+    if (viewMonth === 0) {
+      setViewYear((y) => y - 1);
+      setViewMonth(11);
+    } else {
+      setViewMonth((m) => m - 1);
+    }
+  };
+  const goNextMonth = () => {
+    if (isCurrentMonth) return; // don't navigate into the future
+    if (viewMonth === 11) {
+      setViewYear((y) => y + 1);
+      setViewMonth(0);
+    } else {
+      setViewMonth((m) => m + 1);
+    }
+  };
+
+  const cells = [];
+  for (let i = 0; i < leadingBlanks; i++) cells.push(null);
+  for (let day = 1; day <= daysInMonth; day++) cells.push(day);
+
+  return (
+    <div>
+      <div style={{ display: "flex", gap: 18, marginBottom: 16 }}>
+        <div>
+          <div style={{ fontSize: 22, fontWeight: 600, color: "#F3EEE3", fontFamily: "ui-serif, Georgia, serif" }}>
+            {monthCompletedCount}
+            <span style={{ fontSize: 13, color: "#8A8478", fontFamily: "inherit" }}>/{daysInMonth}</span>
+          </div>
+          <div style={{ fontSize: 10.5, color: "#8A8478", marginTop: 1 }}>this month</div>
+        </div>
+        <div>
+          <div
+            style={{
+              fontSize: 22,
+              fontWeight: 600,
+              color: streak > 0 ? color : "#F3EEE3",
+              fontFamily: "ui-serif, Georgia, serif",
+            }}
+          >
+            {streak}
+          </div>
+          <div style={{ fontSize: 10.5, color: "#8A8478", marginTop: 1 }}>day streak</div>
+        </div>
+      </div>
+
+      {/* Month navigation */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+        <button
+          onClick={goPrevMonth}
+          aria-label="Previous month"
+          style={{ background: "transparent", border: "none", color: "#948E80", cursor: "pointer", padding: 6 }}
+        >
+          <ChevronLeft size={18} />
+        </button>
+        <span style={{ fontSize: 13.5, fontWeight: 600, color: "#C9C3B6" }}>
+          {MONTH_LABELS[viewMonth]} {viewYear}
+        </span>
+        <button
+          onClick={goNextMonth}
+          aria-label="Next month"
+          disabled={isCurrentMonth}
+          style={{
+            background: "transparent",
+            border: "none",
+            color: isCurrentMonth ? "#3A362F" : "#948E80",
+            cursor: isCurrentMonth ? "default" : "pointer",
+            padding: 6,
+          }}
+        >
+          <ChevronRight size={18} />
+        </button>
+      </div>
+
+      {/* Weekday header */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 6, marginBottom: 6 }}>
+        {WEEKDAY_LABELS.map((w, i) => (
+          <div key={i} style={{ textAlign: "center", fontSize: 10, color: "#5E594E", fontFamily: "ui-monospace, monospace" }}>
+            {w}
+          </div>
+        ))}
+      </div>
+
+      {/* Day grid */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 6 }}>
+        {cells.map((day, i) => {
+          if (day == null) return <div key={`blank-${i}`} />;
+          const key = `${viewYear}-${String(viewMonth + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+          const done = completions.includes(key);
+          const isToday = key === todayStr;
+          const isFuture = key > todayStr;
+          return (
+            <button
+              key={key}
+              onClick={() => !isFuture && onToggleDay(key)}
+              disabled={isFuture}
+              aria-label={`${key}${done ? " completed" : ""}`}
+              style={{
+                aspectRatio: "1",
+                borderRadius: 7,
+                border: isToday ? `1.5px solid ${color}` : "1px solid #2E2B26",
+                background: done ? color : "#211E1B",
+                color: isFuture ? "#3A362F" : done ? "#1A1816" : "#6E6858",
+                fontSize: 11,
+                fontFamily: "ui-monospace, monospace",
+                fontWeight: isToday ? 700 : 400,
+                cursor: isFuture ? "default" : "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              {day}
+            </button>
+          );
+        })}
+      </div>
+      <p style={{ fontSize: 11.5, color: "#6E6858", marginTop: 12 }}>
+        Tap any past day to mark it done or undo it — today is outlined.
+      </p>
+    </div>
+  );
+}
+
+function Row({ item, progressOf, hasChildren, justStamped, toggleItem, removeItem, onOpen }) {
+  const color = typeMap[item.type]?.color || "#7C7BA6";
+  const { done: doneCount, total } = progressOf(item.id);
+
+  return (
+    <div
+      onClick={onOpen}
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 10,
+        background: "#211E1B",
+        border: "1px solid #2E2B26",
+        borderLeft: `3px solid ${color}`,
+        borderRadius: 8,
+        padding: "10px 12px",
+        opacity: item.done ? 0.55 : 1,
+        cursor: "pointer",
+        transition: "opacity 0.3s ease",
+      }}
+    >
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          toggleItem(item.id);
+        }}
+        aria-label={item.done ? "Mark incomplete" : "Mark complete"}
+        style={{
+          width: 22,
+          height: 22,
+          borderRadius: 6,
+          border: `1.5px solid ${item.done ? color : "#4A4539"}`,
+          background: item.done ? color : "transparent",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          cursor: "pointer",
+          flexShrink: 0,
+          transform: justStamped === item.id ? "scale(1.35) rotate(-8deg)" : "scale(1) rotate(0deg)",
+          transition: "transform 0.35s cubic-bezier(.34,1.56,.64,1), background 0.2s, border-color 0.2s",
+        }}
+      >
+        {item.done && <Check size={14} color="#1A1816" strokeWidth={3} />}
+      </button>
+
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+          <span
+            style={{
+              fontSize: 14,
+              color: item.done ? "#7A7568" : "#EDE8DF",
+              textDecoration: item.done ? "line-through" : "none",
+              overflowWrap: "break-word",
+            }}
+          >
+            {item.title}
+          </span>
+          {total > 0 && (
+            <span
+              style={{
+                fontSize: 10,
+                fontFamily: "ui-monospace, monospace",
+                color: doneCount === total ? "#7A9B76" : "#948E80",
+                background: "#1A1816",
+                border: "1px solid #33302B",
+                borderRadius: 999,
+                padding: "1px 6px",
+              }}
+            >
+              {doneCount}/{total}
+            </span>
+          )}
+        </div>
+        <div style={{ display: "flex", gap: 8, marginTop: 3, alignItems: "center", flexWrap: "wrap" }}>
+          <span style={{ fontSize: 10.5, fontFamily: "ui-monospace, monospace", color: "#6E6858" }}>
+            {timeAgo(item.created)}
+          </span>
+          {item.priority === "high" && !item.done && <Flame size={11} color="#C9A24B" />}
+        </div>
+      </div>
+
+      {hasChildren && <ChevronRight size={16} color="#5E594E" style={{ flexShrink: 0 }} />}
+
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          removeItem(item.id);
+        }}
+        aria-label="Delete"
+        style={{ background: "transparent", border: "none", cursor: "pointer", color: "#5E594E", padding: 4, flexShrink: 0 }}
+      >
+        <X size={14} />
+      </button>
+    </div>
+  );
+}
+
+function ChevronDownIcon() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#6E6858" strokeWidth="2.5">
+      <path d="M6 9l6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function selectStyle(accent) {
+  return {
+    fontSize: 11.5,
+    padding: "6px 8px",
+    borderRadius: 7,
+    border: `1px solid ${accent}`,
+    background: "#1A1816",
+    color: "#C9C3B6",
+    outline: "none",
+    cursor: "pointer",
+    maxWidth: 160,
+  };
+}
