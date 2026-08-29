@@ -1,5 +1,15 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { Plus, X, Check, Flame, ChevronLeft, ChevronRight } from "lucide-react";
+import { createClient } from "@supabase/supabase-js";
+
+// Playhub Supabase project — data is persisted as a single JSON blob in
+// task_ledger_state, the same pattern this project already uses for
+// propane_app_state.
+const supabase = createClient(
+  "https://wkfzhcszhgewkvwukzes.supabase.co",
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndrZnpoY3N6aGdld2t2d3VremVzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mzg3MDE1NzksImV4cCI6MjA1NDI3NzU3OX0.TzSh8M9NOTnsmVaNxquif4xzSxWaVZp9sePHcjrgCVI"
+);
+const LEDGER_STATE_ID = "default";
 
 // ---- Design tokens ----
 // Deep warm charcoal ledger, brass accent, muted "family" palette per type.
@@ -120,6 +130,47 @@ function currentStreak(completions) {
 
 export default function TaskLedger() {
   const [items, setItems] = useState(seedItems);
+  const [loaded, setLoaded] = useState(false);
+  const [syncError, setSyncError] = useState(null);
+  const saveTimer = useRef(null);
+
+  // Load persisted state once on mount.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const { data, error } = await supabase
+        .from("task_ledger_state")
+        .select("payload")
+        .eq("id", LEDGER_STATE_ID)
+        .maybeSingle();
+      if (cancelled) return;
+      if (error) {
+        setSyncError(error.message);
+      } else if (data && Array.isArray(data.payload) && data.payload.length > 0) {
+        setItems(data.payload);
+        const maxId = data.payload.reduce((m, it) => Math.max(m, it.id || 0), 0);
+        idCounter = maxId + 1;
+      }
+      setLoaded(true);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Persist on every change, debounced, once the initial load has settled
+  // (so we don't immediately overwrite remote state with local seed data).
+  useEffect(() => {
+    if (!loaded) return;
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(async () => {
+      const { error } = await supabase
+        .from("task_ledger_state")
+        .upsert({ id: LEDGER_STATE_ID, payload: items, updated_at: new Date().toISOString() });
+      setSyncError(error ? error.message : null);
+    }, 600);
+    return () => clearTimeout(saveTimer.current);
+  }, [items, loaded]);
   const [draft, setDraft] = useState("");
   const [draftType, setDraftType] = useState("onetime");
   const [draftPriority, setDraftPriority] = useState("med");
@@ -291,6 +342,22 @@ export default function TaskLedger() {
         padding: "22px 20px 90px",
       }}
     >
+      {syncError && (
+        <div
+          style={{
+            background: "#3A1E1A",
+            border: "1px solid #6E3A2E",
+            color: "#E0A896",
+            fontSize: 11.5,
+            borderRadius: 8,
+            padding: "8px 10px",
+            marginBottom: 12,
+          }}
+        >
+          Sync issue: {syncError}
+        </div>
+      )}
+
       {/* Header */}
       <div style={{ marginBottom: 18, borderBottom: "1px solid #33302B", paddingBottom: 16 }}>
         {currentItem ? (
