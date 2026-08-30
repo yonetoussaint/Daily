@@ -334,6 +334,12 @@ export default function TaskLedger() {
     setItems((list) => list.map((it) => (it.id === id ? { ...it, [field]: value } : it)));
   };
 
+  const renameItem = (id, title) => {
+    const trimmed = title.trim();
+    if (!trimmed) return;
+    updateField(id, "title", trimmed);
+  };
+
   const childItems = childrenOf[currentId == null ? ROOT_KEY : currentId] || [];
   const filteredChildren = useMemo(() => {
     let list = childItems;
@@ -503,8 +509,11 @@ export default function TaskLedger() {
               <span
                 style={{ width: 8, height: 8, borderRadius: "50%", background: typeMap[currentItem.type].color, flexShrink: 0 }}
               />
-              <h1
-                style={{
+              <EditableTitle
+                value={currentItem.title}
+                onSave={(t) => renameItem(currentItem.id, t)}
+                tag="h1"
+                textStyle={{
                   fontFamily: "ui-serif, Georgia, serif",
                   fontWeight: 600,
                   fontSize: 22,
@@ -512,9 +521,14 @@ export default function TaskLedger() {
                   margin: 0,
                   color: "#F3EEE3",
                 }}
-              >
-                {currentItem.title}
-              </h1>
+                inputStyle={{
+                  fontFamily: "ui-serif, Georgia, serif",
+                  fontWeight: 600,
+                  fontSize: 22,
+                  letterSpacing: "-0.01em",
+                  width: "100%",
+                }}
+              />
             </div>
             <p style={{ margin: "6px 0 0", fontSize: 12.5, color: "#948E80" }}>
               {typeMap[currentItem.type].label}
@@ -801,6 +815,7 @@ export default function TaskLedger() {
                           toggleItem={toggleItem}
                           removeItem={removeItem}
                           onOpen={() => drillInto(it.id)}
+                          renameItem={renameItem}
                         />
                       ))}
                     </div>
@@ -820,6 +835,7 @@ export default function TaskLedger() {
           locationLabel={locationLabel}
           homeSort={homeSort}
           setHomeSort={setHomeSort}
+          renameItem={renameItem}
         />
       )}
 
@@ -872,6 +888,7 @@ export default function TaskLedger() {
               removeItem={removeItem}
               onOpen={() => drillInto(it.id)}
               docMode={inDocMode}
+              renameItem={renameItem}
             />
           ))}
         </div>
@@ -893,6 +910,7 @@ export default function TaskLedger() {
               toggleItem={toggleItem}
               removeItem={removeItem}
               onOpen={() => drillInto(it.id)}
+              renameItem={renameItem}
             />
           ))}
         </div>
@@ -1573,7 +1591,75 @@ function HabitBoard({ item, onToggleDay }) {
   );
 }
 
-function Row({ item, progressOf, hasChildren, justStamped, toggleItem, removeItem, onOpen, docMode }) {
+function EditableTitle({ value, onSave, tag = "span", textStyle, inputStyle, placeholder }) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(value);
+  const inputRef = useRef(null);
+
+  useEffect(() => {
+    if (editing) {
+      setDraft(value);
+      const t = setTimeout(() => {
+        inputRef.current?.focus();
+        inputRef.current?.select();
+      }, 0);
+      return () => clearTimeout(t);
+    }
+  }, [editing]);
+
+  const commit = () => {
+    setEditing(false);
+    const trimmed = draft.trim();
+    if (trimmed && trimmed !== value) onSave(trimmed);
+  };
+
+  if (editing) {
+    return (
+      <input
+        ref={inputRef}
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onClick={(e) => e.stopPropagation()}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            commit();
+          } else if (e.key === "Escape") {
+            e.preventDefault();
+            setEditing(false);
+          }
+        }}
+        placeholder={placeholder}
+        style={{
+          background: "#1A1816",
+          border: "1px solid #4A4539",
+          borderRadius: 5,
+          color: "#EDE8DF",
+          outline: "none",
+          padding: "2px 6px",
+          ...inputStyle,
+        }}
+      />
+    );
+  }
+
+  const Tag = tag;
+  return (
+    <Tag
+      onClick={(e) => {
+        e.stopPropagation();
+        setEditing(true);
+      }}
+      title="Click to edit"
+      style={{ cursor: "text", ...textStyle }}
+    >
+      {value}
+    </Tag>
+  );
+}
+
+function Row({ item, progressOf, hasChildren, justStamped, toggleItem, removeItem, onOpen, docMode, renameItem }) {
   const color = typeMap[item.type]?.color || "#7C7BA6";
   const { done: doneCount, total } = progressOf(item.id);
 
@@ -1637,16 +1723,17 @@ function Row({ item, progressOf, hasChildren, justStamped, toggleItem, removeIte
 
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-          <span
-            style={{
+          <EditableTitle
+            value={item.title}
+            onSave={(t) => renameItem(item.id, t)}
+            textStyle={{
               fontSize: 14,
               color: !docMode && item.done ? "#7A7568" : "#EDE8DF",
               textDecoration: !docMode && item.done ? "line-through" : "none",
               overflowWrap: "break-word",
             }}
-          >
-            {item.title}
-          </span>
+            inputStyle={{ fontSize: 14, minWidth: 0, flex: 1 }}
+          />
           {total > 0 && (
             <span
               style={{
@@ -1717,7 +1804,7 @@ function HomeBadge({ label, color }) {
   );
 }
 
-function HomeTaskRow({ item, toggleItem, justStamped, onOpen, locationLabel, today, effectiveDue }) {
+function HomeTaskRow({ item, toggleItem, justStamped, onOpen, locationLabel, today, effectiveDue, renameItem }) {
   const color = typeMap[item.type]?.color || "#7C7BA6";
   const loc = locationLabel(item.id);
   const due = effectiveDue ? effectiveDue(item) : item.dueDate;
@@ -1764,7 +1851,12 @@ function HomeTaskRow({ item, toggleItem, justStamped, onOpen, locationLabel, tod
       />
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-          <span style={{ fontSize: 14, color: "#EDE8DF" }}>{item.title}</span>
+          <EditableTitle
+            value={item.title}
+            onSave={(t) => renameItem(item.id, t)}
+            textStyle={{ fontSize: 14, color: "#EDE8DF" }}
+            inputStyle={{ fontSize: 14, minWidth: 0, flex: 1 }}
+          />
           {item.priority === "high" && <Flame size={11} color="#C9A24B" />}
           {isOverdue && <HomeBadge label="Overdue" color="#C9614B" />}
           {!isOverdue && isToday && <HomeBadge label="Today" color="#C9A24B" />}
@@ -1815,7 +1907,7 @@ const HOME_SORT_OPTIONS = [
   { id: "az", label: "Sort: Name (A–Z)" },
 ];
 
-function HomeDashboard({ data, toggleItem, justStamped, onOpen, locationLabel, homeSort, setHomeSort }) {
+function HomeDashboard({ data, toggleItem, justStamped, onOpen, locationLabel, homeSort, setHomeSort, renameItem }) {
   const { allLeafTasks, branches, today, effectiveDue } = data;
 
   return (
@@ -1841,6 +1933,7 @@ function HomeDashboard({ data, toggleItem, justStamped, onOpen, locationLabel, h
             locationLabel={locationLabel}
             today={today}
             effectiveDue={effectiveDue}
+            renameItem={renameItem}
           />
         ))}
       </HomeSection>
