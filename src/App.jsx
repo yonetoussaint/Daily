@@ -401,12 +401,30 @@ export default function TaskLedger() {
 
     const allLeafTasks = [...leafPool].sort(sorters[homeSort] || sorters.priority);
 
+    // Group leaf tasks under their top-level ancestor, same root items the
+    // Progress section lists — so "All Tasks" reads as an expansion of that
+    // structure rather than a separate flat pile.
+    const rootOf = (id) => {
+      let cur = byId[id];
+      if (!cur) return null;
+      while (cur.parentId != null && byId[cur.parentId]) cur = byId[cur.parentId];
+      return cur;
+    };
+
+    const groupOrder = items.filter((it) => it.parentId == null);
+    const groups = groupOrder
+      .map((root) => ({
+        root,
+        tasks: allLeafTasks.filter((t) => rootOf(t.id)?.id === root.id),
+      }))
+      .filter((g) => g.tasks.length > 0);
+
     const branches = items
       .filter((it) => it.parentId == null && !it.docMode)
       .map((it) => ({ item: it, progress: progressOf(it.id) }))
       .filter((b) => b.progress.total > 0);
 
-    return { allLeafTasks, branches, today, effectiveDue };
+    return { allLeafTasks, groups, branches, today, effectiveDue };
   }, [items, byId, childrenOf, homeSort]);
 
   const drillInto = (id) => setStack((s) => [...s, id]);
@@ -1876,30 +1894,6 @@ function HomeTaskRow({ item, toggleItem, justStamped, onOpen, locationLabel, tod
   );
 }
 
-function HomeSection({ title, tint, children, emptyText }) {
-  return (
-    <div style={{ marginBottom: 22 }}>
-      <div
-        style={{
-          fontSize: 11.5,
-          fontWeight: 700,
-          letterSpacing: "0.04em",
-          color: tint || "#8A8478",
-          marginBottom: 8,
-          textTransform: "uppercase",
-        }}
-      >
-        {title}
-      </div>
-      {React.Children.count(children) === 0 ? (
-        <div style={{ fontSize: 12.5, color: "#5E594E", padding: "4px 2px" }}>{emptyText}</div>
-      ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>{children}</div>
-      )}
-    </div>
-  );
-}
-
 const HOME_SORT_OPTIONS = [
   { id: "priority", label: "Sort: Priority" },
   { id: "due", label: "Sort: Due date" },
@@ -1908,11 +1902,22 @@ const HOME_SORT_OPTIONS = [
 ];
 
 function HomeDashboard({ data, toggleItem, justStamped, onOpen, locationLabel, homeSort, setHomeSort, renameItem }) {
-  const { allLeafTasks, branches, today, effectiveDue } = data;
+  const { allLeafTasks, groups, branches, today, effectiveDue } = data;
 
   return (
     <div>
-      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 12 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+        <div
+          style={{
+            fontSize: 11.5,
+            fontWeight: 700,
+            letterSpacing: "0.04em",
+            color: "#8A8478",
+            textTransform: "uppercase",
+          }}
+        >
+          All Tasks · {allLeafTasks.length}
+        </div>
         <select value={homeSort} onChange={(e) => setHomeSort(e.target.value)} style={selectStyle("#3A362E")}>
           {HOME_SORT_OPTIONS.map((o) => (
             <option key={o.id} value={o.id}>
@@ -1922,21 +1927,56 @@ function HomeDashboard({ data, toggleItem, justStamped, onOpen, locationLabel, h
         </select>
       </div>
 
-      <HomeSection title={`All Tasks · ${allLeafTasks.length}`} emptyText="No open tasks. Add one to get started.">
-        {allLeafTasks.map((it) => (
-          <HomeTaskRow
-            key={it.id}
-            item={it}
-            toggleItem={toggleItem}
-            justStamped={justStamped}
-            onOpen={onOpen}
-            locationLabel={locationLabel}
-            today={today}
-            effectiveDue={effectiveDue}
-            renameItem={renameItem}
-          />
-        ))}
-      </HomeSection>
+      {groups.length === 0 && (
+        <div style={{ fontSize: 12.5, color: "#5E594E", padding: "4px 2px", marginBottom: 22 }}>
+          No open tasks. Add one to get started.
+        </div>
+      )}
+
+      {groups.map(({ root, tasks }) => {
+        const color = typeMap[root.type]?.color || "#7C7BA6";
+        return (
+          <div key={root.id} style={{ marginBottom: 22 }}>
+            <button
+              onClick={() => onOpen(root.id)}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 7,
+                background: "transparent",
+                border: "none",
+                padding: 0,
+                marginBottom: 8,
+                cursor: "pointer",
+                textAlign: "left",
+              }}
+            >
+              <span style={{ width: 7, height: 7, borderRadius: "50%", background: color, flexShrink: 0 }} />
+              <span style={{ fontSize: 12.5, fontWeight: 600, color: "#C9C3B6", letterSpacing: "0.01em" }}>
+                {root.title}
+              </span>
+              <span style={{ fontSize: 11, color: "#5E594E", fontFamily: "ui-monospace, monospace" }}>
+                {tasks.length}
+              </span>
+            </button>
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              {tasks.map((it) => (
+                <HomeTaskRow
+                  key={it.id}
+                  item={it}
+                  toggleItem={toggleItem}
+                  justStamped={justStamped}
+                  onOpen={onOpen}
+                  locationLabel={locationLabel}
+                  today={today}
+                  effectiveDue={effectiveDue}
+                  renameItem={renameItem}
+                />
+              ))}
+            </div>
+          </div>
+        );
+      })}
 
       {branches.length > 0 && (
         <div>
