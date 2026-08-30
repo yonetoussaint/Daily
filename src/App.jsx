@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef } from "react";
+import React, { useState, useMemo, useEffect, useRef } from "react";
 import { Plus, X, Check, Flame, ChevronLeft, ChevronRight, FileText } from "lucide-react";
 import { createClient } from "@supabase/supabase-js";
 
@@ -57,6 +57,9 @@ const mk = (title, type, priority, parentId, doneOffset) => ({
   targetDate: null,
   cover: null,
   docMode: false,
+  dueDate: null,
+  blocked: false,
+  blockedReason: "",
 });
 
 function seedItems() {
@@ -179,6 +182,7 @@ export default function TaskLedger() {
   const [collapsed, setCollapsed] = useState({});
   const [justStamped, setJustStamped] = useState(null);
   const [stack, setStack] = useState([]); // array of item ids, drill-down path
+  const [rootView, setRootView] = useState("home"); // "home" | "structure" — only matters when stack is empty
   const [showAddModal, setShowAddModal] = useState(false);
 
   const byId = useMemo(() => Object.fromEntries(items.map((i) => [i.id, i])), [items]);
@@ -242,6 +246,10 @@ export default function TaskLedger() {
         purpose: "",
         targetDate: null,
         cover: null,
+        docMode: false,
+        dueDate: null,
+        blocked: false,
+        blockedReason: "",
       },
       ...list,
     ]);
@@ -321,6 +329,10 @@ export default function TaskLedger() {
     setItems((list) => list.map((it) => (it.id === id ? { ...it, cover } : it)));
   };
 
+  const updateField = (id, field, value) => {
+    setItems((list) => list.map((it) => (it.id === id ? { ...it, [field]: value } : it)));
+  };
+
   const childItems = childrenOf[currentId == null ? ROOT_KEY : currentId] || [];
   const filteredChildren = useMemo(() => {
     let list = childItems;
@@ -342,9 +354,71 @@ export default function TaskLedger() {
 
   const openCount = items.filter((i) => !i.done).length;
 
+  const homeData = useMemo(() => {
+    const today = dateKey(new Date());
+    // Actionable pool: not done, not a habit's own recurring entry, and not
+    // inside a doc-mode branch (reference material has no "due" concept).
+    const actionable = items.filter((it) => !it.done && it.type !== "habits" && !isDocMode(it.id));
+
+    const effectiveDue = (it) => it.dueDate || (it.type === "milestones" ? it.targetDate : null);
+
+    const todayItems = actionable.filter((it) => effectiveDue(it) === today);
+    const overdueItems = actionable
+      .filter((it) => {
+        const d = effectiveDue(it);
+        return d && d < today;
+      })
+      .sort((a, b) => effectiveDue(a).localeCompare(effectiveDue(b)));
+    const blockedItems = actionable.filter((it) => it.blocked);
+    const upcomingItems = actionable
+      .filter((it) => {
+        const d = effectiveDue(it);
+        return d && d > today;
+      })
+      .sort((a, b) => effectiveDue(a).localeCompare(effectiveDue(b)))
+      .slice(0, 8);
+
+    const priorityRank = { high: 0, med: 1, low: 2 };
+    const focus = [...overdueItems, ...todayItems, ...blockedItems]
+      .filter((v, i, arr) => arr.findIndex((x) => x.id === v.id) === i)
+      .sort((a, b) => priorityRank[a.priority] - priorityRank[b.priority])
+      .slice(0, 3);
+
+    const branches = items
+      .filter((it) => it.parentId == null && !it.docMode)
+      .map((it) => ({ item: it, progress: progressOf(it.id) }))
+      .filter((b) => b.progress.total > 0);
+
+    return { todayItems, overdueItems, blockedItems, upcomingItems, focus, branches };
+  }, [items, byId]);
+
   const drillInto = (id) => setStack((s) => [...s, id]);
   const goBack = () => setStack((s) => s.slice(0, -1));
   const jumpTo = (index) => setStack((s) => s.slice(0, index + 1));
+
+  // Used from Home: jump directly to a task buried anywhere in the tree,
+  // but still build the full ancestor path so breadcrumbs/back behave normally.
+  const drillToPath = (id) => {
+    const path = [];
+    let cur = byId[id];
+    while (cur) {
+      path.unshift(cur.id);
+      cur = cur.parentId != null ? byId[cur.parentId] : null;
+    }
+    setStack(path);
+  };
+
+  // Location breadcrumb text for a task, excluding the top-level root itself
+  // (e.g. "Development / Backend / Competition System") — used on Home rows.
+  const locationLabel = (id) => {
+    const names = [];
+    let cur = byId[id]?.parentId != null ? byId[byId[id].parentId] : null;
+    while (cur) {
+      names.unshift(cur.title);
+      cur = cur.parentId != null ? byId[cur.parentId] : null;
+    }
+    return names.slice(1).join(" / ") || names.join(" / ");
+  };
 
   return (
     <div
@@ -470,14 +544,16 @@ export default function TaskLedger() {
                   color: "#F3EEE3",
                 }}
               >
-                Ledger
+                {rootView === "home" ? "Home" : "Ledger"}
               </h1>
               <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 12, color: "#8A8478" }}>
                 {openCount} open
               </span>
             </div>
             <p style={{ margin: "6px 0 0", fontSize: 13, color: "#948E80" }}>
-              Tap anything with subtasks to open it.
+              {rootView === "home"
+                ? "What matters right now, wherever it lives in the tree."
+                : "Tap anything with subtasks to open it."}
             </p>
           </>
         )}
@@ -627,8 +703,33 @@ export default function TaskLedger() {
         <Plus size={24} color="#1A1816" strokeWidth={2.5} />
       </button>
 
-      {/* Filters — not shown on a habit's board (calendar, not a filtered list) or in doc-mode branches, where done/open doesn't apply */}
-      {!(currentItem && (currentItem.type === "habits" || inDocMode)) && (
+      {/* Home / Structure toggle — only at the root screen */}
+      {!currentItem && (
+        <div style={{ display: "flex", gap: 6, marginBottom: 14 }}>
+          {[{ id: "home", label: "Home" }, { id: "structure", label: "Structure" }].map((v) => (
+            <button
+              key={v.id}
+              onClick={() => setRootView(v.id)}
+              style={{
+                fontSize: 12.5,
+                padding: "7px 14px",
+                borderRadius: 8,
+                border: "1px solid",
+                borderColor: rootView === v.id ? "#C9A24B" : "#2E2B26",
+                background: rootView === v.id ? "#C9A24B" : "transparent",
+                color: rootView === v.id ? "#1A1816" : "#8A8478",
+                cursor: "pointer",
+                fontWeight: 600,
+              }}
+            >
+              {v.label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Filters — not shown on a habit's board (calendar, not a filtered list), in doc-mode branches, where done/open doesn't apply, or on the Home dashboard */}
+      {!(currentItem && (currentItem.type === "habits" || inDocMode)) && !(!currentItem && rootView === "home") && (
         <div style={{ display: "flex", gap: 6, marginBottom: 14 }}>
           {[{ id: "all", label: "All" }, { id: "open", label: "Open" }, { id: "done", label: "Done" }].map((f) => (
             <button
@@ -652,8 +753,8 @@ export default function TaskLedger() {
         </div>
       )}
 
-      {/* Root view: grouped by type */}
-      {!currentItem && (
+      {/* Root view: grouped by type (Structure) */}
+      {!currentItem && rootView === "structure" && (
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           {(!groupedRoot || groupedRoot.length === 0) && (
             <div style={{ padding: "28px 10px", textAlign: "center", color: "#5E594E", fontSize: 13 }}>
@@ -711,6 +812,16 @@ export default function TaskLedger() {
         </div>
       )}
 
+      {!currentItem && rootView === "home" && (
+        <HomeDashboard
+          data={homeData}
+          toggleItem={toggleItem}
+          justStamped={justStamped}
+          onOpen={(id) => drillToPath(id)}
+          locationLabel={locationLabel}
+        />
+      )}
+
       {/* Drilled-in view */}
       {currentItem && currentItem.type === "habits" && (
         <HabitBoard item={currentItem} onToggleDay={(dayKey) => toggleHabitDay(currentItem.id, dayKey)} />
@@ -726,6 +837,10 @@ export default function TaskLedger() {
           progress={progressOf(currentItem.id)}
           onChange={(dateStr) => updateTargetDate(currentItem.id, dateStr)}
         />
+      )}
+
+      {currentItem && currentItem.type !== "habits" && !inDocMode && (
+        <StatusPanel item={currentItem} updateField={updateField} />
       )}
 
       {currentItem && currentItem.type !== "habits" && (
@@ -1109,6 +1224,144 @@ function MilestonePanel({ item, progress, onChange }) {
   );
 }
 
+function StatusPanel({ item, updateField }) {
+  const [expanded, setExpanded] = useState(!!item.dueDate || !!item.blocked);
+  const color = typeMap[item.type]?.color || "#7C7BA6";
+
+  let dueLabel = null;
+  if (item.dueDate) {
+    const days = daysUntil(item.dueDate);
+    if (days > 0) dueLabel = { text: `Due in ${days}d`, color };
+    else if (days === 0) dueLabel = { text: "Due today", color: "#C9A24B" };
+    else dueLabel = { text: `${Math.abs(days)}d overdue`, color: "#C9614B" };
+  }
+
+  return (
+    <div style={{ marginBottom: 16 }}>
+      <button
+        onClick={() => setExpanded((e) => !e)}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 6,
+          background: "transparent",
+          border: "none",
+          cursor: "pointer",
+          padding: "2px 0 8px",
+          width: "100%",
+          textAlign: "left",
+        }}
+      >
+        {expanded ? <ChevronDownIcon /> : <ChevronRight size={13} color="#6E6858" />}
+        <span style={{ fontSize: 12.5, fontWeight: 600, color: "#C9C3B6", letterSpacing: "0.01em" }}>
+          Status
+        </span>
+        {!expanded && (
+          <span style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            {dueLabel && (
+              <span style={{ fontSize: 11, color: dueLabel.color, fontFamily: "ui-monospace, monospace" }}>
+                {dueLabel.text}
+              </span>
+            )}
+            {item.blocked && <span style={{ fontSize: 11, color: "#D9954B" }}>Blocked</span>}
+          </span>
+        )}
+      </button>
+      {expanded && (
+        <div
+          style={{
+            background: `${color}14`,
+            border: `1px solid ${color}44`,
+            borderRadius: 10,
+            padding: "12px 14px",
+            display: "flex",
+            flexDirection: "column",
+            gap: 12,
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
+            <span style={{ fontSize: 12.5, color: "#C9C3B6" }}>Due date</span>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <input
+                type="date"
+                value={item.dueDate || ""}
+                onChange={(e) => updateField(item.id, "dueDate", e.target.value || null)}
+                style={{
+                  background: "#1A1816",
+                  border: "1px solid #33302B",
+                  borderRadius: 8,
+                  outline: "none",
+                  color: "#EDE8DF",
+                  fontSize: 13,
+                  padding: "7px 9px",
+                  fontFamily: "inherit",
+                  colorScheme: "dark",
+                }}
+              />
+              {dueLabel && (
+                <span style={{ fontSize: 11.5, fontWeight: 600, color: dueLabel.color, fontFamily: "ui-monospace, monospace" }}>
+                  {dueLabel.text}
+                </span>
+              )}
+            </div>
+          </div>
+
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+            <span style={{ fontSize: 12.5, color: "#C9C3B6" }}>Blocked</span>
+            <button
+              onClick={() => updateField(item.id, "blocked", !item.blocked)}
+              style={{
+                width: 40,
+                height: 22,
+                borderRadius: 999,
+                border: "1px solid #33302B",
+                background: item.blocked ? "#D9954B" : "#1A1816",
+                position: "relative",
+                cursor: "pointer",
+                flexShrink: 0,
+              }}
+            >
+              <span
+                style={{
+                  position: "absolute",
+                  top: 2,
+                  left: item.blocked ? 20 : 2,
+                  width: 16,
+                  height: 16,
+                  borderRadius: "50%",
+                  background: "#EDE8DF",
+                  transition: "left 0.15s ease",
+                }}
+              />
+            </button>
+          </div>
+
+          {item.blocked && (
+            <input
+              type="text"
+              value={item.blockedReason || ""}
+              onChange={(e) => updateField(item.id, "blockedReason", e.target.value)}
+              placeholder="Waiting on…"
+              style={{
+                background: "#1A1816",
+                border: "1px solid #33302B",
+                borderRadius: 8,
+                outline: "none",
+                color: "#EDE8DF",
+                fontSize: 13,
+                padding: "8px 10px",
+                fontFamily: "inherit",
+                width: "100%",
+                boxSizing: "border-box",
+              }}
+            />
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function NotesPanel({ item, onChange, label = "Notes", forceExpanded = false, placeholder }) {
   const [manuallyExpanded, setManuallyExpanded] = useState(null);
   const expanded = manuallyExpanded !== null ? manuallyExpanded : forceExpanded || !!item.notes;
@@ -1440,6 +1693,186 @@ function ChevronDownIcon() {
     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#6E6858" strokeWidth="2.5">
       <path d="M6 9l6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
+  );
+}
+
+function HomeTaskRow({ item, toggleItem, justStamped, onOpen, locationLabel, tint }) {
+  const color = typeMap[item.type]?.color || "#7C7BA6";
+  const loc = locationLabel(item.id);
+  return (
+    <div
+      onClick={() => onOpen(item.id)}
+      style={{
+        display: "flex",
+        alignItems: "flex-start",
+        gap: 10,
+        background: "#211E1B",
+        border: "1px solid #2E2B26",
+        borderLeft: `3px solid ${tint || color}`,
+        borderRadius: 8,
+        padding: "10px 12px",
+        cursor: "pointer",
+      }}
+    >
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          toggleItem(item.id);
+        }}
+        aria-label="Mark complete"
+        style={{
+          width: 22,
+          height: 22,
+          marginTop: 1,
+          borderRadius: 6,
+          border: "1.5px solid #4A4539",
+          background: "transparent",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          cursor: "pointer",
+          flexShrink: 0,
+          transform: justStamped === item.id ? "scale(1.35) rotate(-8deg)" : "scale(1) rotate(0deg)",
+          transition: "transform 0.35s cubic-bezier(.34,1.56,.64,1)",
+        }}
+      />
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+          <span style={{ fontSize: 14, color: "#EDE8DF" }}>{item.title}</span>
+          {item.priority === "high" && <Flame size={11} color="#C9A24B" />}
+        </div>
+        <div style={{ fontSize: 11, color: "#6E6858", marginTop: 3, overflowWrap: "break-word" }}>
+          {loc || typeMap[item.type]?.label}
+          {item.blocked && item.blockedReason ? ` · Waiting on: ${item.blockedReason}` : ""}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function HomeSection({ title, tint, children, emptyText }) {
+  return (
+    <div style={{ marginBottom: 22 }}>
+      <div
+        style={{
+          fontSize: 11.5,
+          fontWeight: 700,
+          letterSpacing: "0.04em",
+          color: tint || "#8A8478",
+          marginBottom: 8,
+          textTransform: "uppercase",
+        }}
+      >
+        {title}
+      </div>
+      {React.Children.count(children) === 0 ? (
+        <div style={{ fontSize: 12.5, color: "#5E594E", padding: "4px 2px" }}>{emptyText}</div>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>{children}</div>
+      )}
+    </div>
+  );
+}
+
+function HomeDashboard({ data, toggleItem, justStamped, onOpen, locationLabel }) {
+  const { focus, todayItems, overdueItems, blockedItems, upcomingItems, branches } = data;
+
+  return (
+    <div>
+      {focus.length > 0 && (
+        <HomeSection title="🎯 Focus — next up" tint="#C9A24B">
+          {focus.map((it) => (
+            <HomeTaskRow key={it.id} item={it} toggleItem={toggleItem} justStamped={justStamped} onOpen={onOpen} locationLabel={locationLabel} tint="#C9A24B" />
+          ))}
+        </HomeSection>
+      )}
+
+      <HomeSection title="Today" emptyText="Nothing due today.">
+        {todayItems.map((it) => (
+          <HomeTaskRow key={it.id} item={it} toggleItem={toggleItem} justStamped={justStamped} onOpen={onOpen} locationLabel={locationLabel} />
+        ))}
+      </HomeSection>
+
+      {overdueItems.length > 0 && (
+        <HomeSection title="🔴 Overdue" tint="#C9614B">
+          {overdueItems.map((it) => (
+            <HomeTaskRow key={it.id} item={it} toggleItem={toggleItem} justStamped={justStamped} onOpen={onOpen} locationLabel={locationLabel} tint="#C9614B" />
+          ))}
+        </HomeSection>
+      )}
+
+      {blockedItems.length > 0 && (
+        <HomeSection title="🟠 Blocked" tint="#D9954B">
+          {blockedItems.map((it) => (
+            <HomeTaskRow key={it.id} item={it} toggleItem={toggleItem} justStamped={justStamped} onOpen={onOpen} locationLabel={locationLabel} tint="#D9954B" />
+          ))}
+        </HomeSection>
+      )}
+
+      {upcomingItems.length > 0 && (
+        <HomeSection title="Upcoming">
+          {upcomingItems.map((it) => (
+            <div key={it.id} style={{ position: "relative" }}>
+              <HomeTaskRow item={it} toggleItem={toggleItem} justStamped={justStamped} onOpen={onOpen} locationLabel={locationLabel} />
+              <span
+                style={{
+                  position: "absolute",
+                  top: 10,
+                  right: 12,
+                  fontSize: 10,
+                  fontFamily: "ui-monospace, monospace",
+                  color: "#6E6858",
+                }}
+              >
+                {(it.dueDate || it.targetDate)?.slice(5)}
+              </span>
+            </div>
+          ))}
+        </HomeSection>
+      )}
+
+      {branches.length > 0 && (
+        <div>
+          <div
+            style={{
+              fontSize: 11.5,
+              fontWeight: 700,
+              letterSpacing: "0.04em",
+              color: "#8A8478",
+              marginBottom: 10,
+              textTransform: "uppercase",
+            }}
+          >
+            Progress
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            {branches.map(({ item, progress }) => {
+              const pct = progress.total > 0 ? Math.round((progress.done / progress.total) * 100) : 0;
+              const color = typeMap[item.type]?.color || "#7C7BA6";
+              return (
+                <div key={item.id} onClick={() => onOpen(item.id)} style={{ cursor: "pointer" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 5 }}>
+                    <span style={{ fontSize: 13, color: "#EDE8DF" }}>{item.title}</span>
+                    <span style={{ fontSize: 11.5, fontFamily: "ui-monospace, monospace", color: "#948E80" }}>
+                      {progress.done}/{progress.total} · {pct}%
+                    </span>
+                  </div>
+                  <div style={{ width: "100%", height: 7, borderRadius: 999, background: "#211E1B", border: "1px solid #2E2B26", overflow: "hidden" }}>
+                    <div style={{ width: `${pct}%`, height: "100%", borderRadius: 999, background: color, transition: "width 0.3s ease" }} />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {focus.length === 0 && todayItems.length === 0 && overdueItems.length === 0 && blockedItems.length === 0 && upcomingItems.length === 0 && branches.length === 0 && (
+        <div style={{ padding: "28px 10px", textAlign: "center", color: "#5E594E", fontSize: 13 }}>
+          Nothing scheduled or blocked. Set due dates on tasks to see them here.
+        </div>
+      )}
+    </div>
   );
 }
 
