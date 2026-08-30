@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useRef } from "react";
-import { Plus, X, Check, Flame, ChevronLeft, ChevronRight } from "lucide-react";
+import { Plus, X, Check, Flame, ChevronLeft, ChevronRight, FileText } from "lucide-react";
 import { createClient } from "@supabase/supabase-js";
 
 // Playhub Supabase project — data is persisted as a single JSON blob in
@@ -56,6 +56,7 @@ const mk = (title, type, priority, parentId, doneOffset) => ({
   purpose: "",
   targetDate: null,
   cover: null,
+  docMode: false,
 });
 
 function seedItems() {
@@ -210,6 +211,19 @@ export default function TaskLedger() {
 
   const currentId = stack.length ? stack[stack.length - 1] : null;
   const currentItem = currentId ? byId[currentId] : null;
+
+  // A branch is "documentation" if it or any ancestor is flagged docMode.
+  // Descendants don't need the flag themselves — this walks up to find it,
+  // so anything added under a doc project inherits the doc treatment.
+  const isDocMode = (id) => {
+    let cur = id != null ? byId[id] : null;
+    while (cur) {
+      if (cur.docMode) return true;
+      cur = cur.parentId != null ? byId[cur.parentId] : null;
+    }
+    return false;
+  };
+  const inDocMode = currentItem ? isDocMode(currentItem.id) : false;
 
   const addItem = () => {
     const title = draft.trim();
@@ -433,9 +447,15 @@ export default function TaskLedger() {
               {typeMap[currentItem.type].label}
               {(() => {
                 const { done, total } = progressOf(currentItem.id);
-                return total > 0 ? ` · ${done}/${total} done` : "";
+                if (total === 0) return "";
+                return inDocMode ? ` · ${total} section${total === 1 ? "" : "s"}` : ` · ${done}/${total} done`;
               })()}
             </p>
+            {inDocMode && (
+              <p style={{ margin: "2px 0 0", fontSize: 11, color: "#6E6858", fontStyle: "italic" }}>
+                Reference material — nothing here needs checking off.
+              </p>
+            )}
           </>
         ) : (
           <>
@@ -607,8 +627,8 @@ export default function TaskLedger() {
         <Plus size={24} color="#1A1816" strokeWidth={2.5} />
       </button>
 
-      {/* Filters — not shown on a habit's board, since it's a calendar, not a filtered list */}
-      {!(currentItem && currentItem.type === "habits") && (
+      {/* Filters — not shown on a habit's board (calendar, not a filtered list) or in doc-mode branches, where done/open doesn't apply */}
+      {!(currentItem && (currentItem.type === "habits" || inDocMode)) && (
         <div style={{ display: "flex", gap: 6, marginBottom: 14 }}>
           {[{ id: "all", label: "All" }, { id: "open", label: "Open" }, { id: "done", label: "Done" }].map((f) => (
             <button
@@ -709,14 +729,20 @@ export default function TaskLedger() {
       )}
 
       {currentItem && currentItem.type !== "habits" && (
-        <NotesPanel item={currentItem} onChange={(text) => updateNotes(currentItem.id, text)} />
+        <NotesPanel
+          item={currentItem}
+          onChange={(text) => updateNotes(currentItem.id, text)}
+          label={inDocMode ? "Content" : "Notes"}
+          forceExpanded={inDocMode && (childrenOf[currentItem.id] || []).length === 0}
+          placeholder={inDocMode ? "Write the reference content for this entry…" : undefined}
+        />
       )}
 
       {currentItem && currentItem.type !== "habits" && (
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
           {filteredChildren.length === 0 && (
             <div style={{ padding: "28px 10px", textAlign: "center", color: "#5E594E", fontSize: 13 }}>
-              No subtasks yet. Add one above.
+              {inDocMode ? "No sub-entries yet. Add one above." : "No subtasks yet. Add one above."}
             </div>
           )}
           {filteredChildren.map((it) => (
@@ -729,6 +755,7 @@ export default function TaskLedger() {
               toggleItem={toggleItem}
               removeItem={removeItem}
               onOpen={() => drillInto(it.id)}
+              docMode={inDocMode}
             />
           ))}
         </div>
@@ -1082,14 +1109,15 @@ function MilestonePanel({ item, progress, onChange }) {
   );
 }
 
-function NotesPanel({ item, onChange }) {
-  const [expanded, setExpanded] = useState(!!item.notes);
+function NotesPanel({ item, onChange, label = "Notes", forceExpanded = false, placeholder }) {
+  const [manuallyExpanded, setManuallyExpanded] = useState(null);
+  const expanded = manuallyExpanded !== null ? manuallyExpanded : forceExpanded || !!item.notes;
   const color = typeMap[item.type]?.color || "#7C7BA6";
 
   return (
     <div style={{ marginBottom: 16 }}>
       <button
-        onClick={() => setExpanded((e) => !e)}
+        onClick={() => setManuallyExpanded(!expanded)}
         style={{
           display: "flex",
           alignItems: "center",
@@ -1103,7 +1131,7 @@ function NotesPanel({ item, onChange }) {
         }}
       >
         {expanded ? <ChevronDownIcon /> : <ChevronRight size={13} color="#6E6858" />}
-        <span style={{ fontSize: 12.5, fontWeight: 600, color: "#C9C3B6", letterSpacing: "0.01em" }}>Notes</span>
+        <span style={{ fontSize: 12.5, fontWeight: 600, color: "#C9C3B6", letterSpacing: "0.01em" }}>{label}</span>
         {!expanded && item.notes && (
           <span
             style={{
@@ -1124,7 +1152,7 @@ function NotesPanel({ item, onChange }) {
         <textarea
           value={item.notes || ""}
           onChange={(e) => onChange(e.target.value)}
-          placeholder="Jot down ideas, context, links…"
+          placeholder={placeholder || "Jot down ideas, context, links…"}
           rows={4}
           style={{
             width: "100%",
@@ -1291,7 +1319,7 @@ function HabitBoard({ item, onToggleDay }) {
   );
 }
 
-function Row({ item, progressOf, hasChildren, justStamped, toggleItem, removeItem, onOpen }) {
+function Row({ item, progressOf, hasChildren, justStamped, toggleItem, removeItem, onOpen, docMode }) {
   const color = typeMap[item.type]?.color || "#7C7BA6";
   const { done: doneCount, total } = progressOf(item.id);
 
@@ -1307,42 +1335,59 @@ function Row({ item, progressOf, hasChildren, justStamped, toggleItem, removeIte
         borderLeft: `3px solid ${color}`,
         borderRadius: 8,
         padding: "10px 12px",
-        opacity: item.done ? 0.55 : 1,
+        opacity: docMode ? 1 : item.done ? 0.55 : 1,
         cursor: "pointer",
         transition: "opacity 0.3s ease",
       }}
     >
-      <button
-        onClick={(e) => {
-          e.stopPropagation();
-          toggleItem(item.id);
-        }}
-        aria-label={item.done ? "Mark incomplete" : "Mark complete"}
-        style={{
-          width: 22,
-          height: 22,
-          borderRadius: 6,
-          border: `1.5px solid ${item.done ? color : "#4A4539"}`,
-          background: item.done ? color : "transparent",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          cursor: "pointer",
-          flexShrink: 0,
-          transform: justStamped === item.id ? "scale(1.35) rotate(-8deg)" : "scale(1) rotate(0deg)",
-          transition: "transform 0.35s cubic-bezier(.34,1.56,.64,1), background 0.2s, border-color 0.2s",
-        }}
-      >
-        {item.done && <Check size={14} color="#1A1816" strokeWidth={3} />}
-      </button>
+      {docMode ? (
+        <div
+          style={{
+            width: 22,
+            height: 22,
+            borderRadius: 6,
+            border: "1.5px solid #4A4539",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            flexShrink: 0,
+          }}
+        >
+          <FileText size={12} color="#8A8478" />
+        </div>
+      ) : (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            toggleItem(item.id);
+          }}
+          aria-label={item.done ? "Mark incomplete" : "Mark complete"}
+          style={{
+            width: 22,
+            height: 22,
+            borderRadius: 6,
+            border: `1.5px solid ${item.done ? color : "#4A4539"}`,
+            background: item.done ? color : "transparent",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            cursor: "pointer",
+            flexShrink: 0,
+            transform: justStamped === item.id ? "scale(1.35) rotate(-8deg)" : "scale(1) rotate(0deg)",
+            transition: "transform 0.35s cubic-bezier(.34,1.56,.64,1), background 0.2s, border-color 0.2s",
+          }}
+        >
+          {item.done && <Check size={14} color="#1A1816" strokeWidth={3} />}
+        </button>
+      )}
 
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
           <span
             style={{
               fontSize: 14,
-              color: item.done ? "#7A7568" : "#EDE8DF",
-              textDecoration: item.done ? "line-through" : "none",
+              color: !docMode && item.done ? "#7A7568" : "#EDE8DF",
+              textDecoration: !docMode && item.done ? "line-through" : "none",
               overflowWrap: "break-word",
             }}
           >
@@ -1353,23 +1398,25 @@ function Row({ item, progressOf, hasChildren, justStamped, toggleItem, removeIte
               style={{
                 fontSize: 10,
                 fontFamily: "ui-monospace, monospace",
-                color: doneCount === total ? "#7A9B76" : "#948E80",
+                color: docMode ? "#948E80" : doneCount === total ? "#7A9B76" : "#948E80",
                 background: "#1A1816",
                 border: "1px solid #33302B",
                 borderRadius: 999,
                 padding: "1px 6px",
               }}
             >
-              {doneCount}/{total}
+              {docMode ? total : `${doneCount}/${total}`}
             </span>
           )}
         </div>
-        <div style={{ display: "flex", gap: 8, marginTop: 3, alignItems: "center", flexWrap: "wrap" }}>
-          <span style={{ fontSize: 10.5, fontFamily: "ui-monospace, monospace", color: "#6E6858" }}>
-            {timeAgo(item.created)}
-          </span>
-          {item.priority === "high" && !item.done && <Flame size={11} color="#C9A24B" />}
-        </div>
+        {!docMode && (
+          <div style={{ display: "flex", gap: 8, marginTop: 3, alignItems: "center", flexWrap: "wrap" }}>
+            <span style={{ fontSize: 10.5, fontFamily: "ui-monospace, monospace", color: "#6E6858" }}>
+              {timeAgo(item.created)}
+            </span>
+            {item.priority === "high" && !item.done && <Flame size={11} color="#C9A24B" />}
+          </div>
+        )}
       </div>
 
       {hasChildren && <ChevronRight size={16} color="#5E594E" style={{ flexShrink: 0 }} />}
