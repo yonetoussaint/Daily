@@ -184,6 +184,7 @@ export default function TaskLedger() {
   const [stack, setStack] = useState([]); // array of item ids, drill-down path
   const [rootView, setRootView] = useState("home"); // "home" | "structure" — only matters when stack is empty
   const [showAddModal, setShowAddModal] = useState(false);
+  const [homeSort, setHomeSort] = useState("priority"); // "priority" | "due" | "location" | "az"
 
   const byId = useMemo(() => Object.fromEntries(items.map((i) => [i.id, i])), [items]);
 
@@ -354,43 +355,53 @@ export default function TaskLedger() {
 
   const openCount = items.filter((i) => !i.done).length;
 
+  // Location breadcrumb text for a task, excluding the top-level root itself
+  // (e.g. "Development / Backend / Competition System") — used on Home rows.
+  const locationLabel = (id) => {
+    const names = [];
+    let cur = byId[id]?.parentId != null ? byId[byId[id].parentId] : null;
+    while (cur) {
+      names.unshift(cur.title);
+      cur = cur.parentId != null ? byId[cur.parentId] : null;
+    }
+    return names.slice(1).join(" / ") || names.join(" / ");
+  };
+
   const homeData = useMemo(() => {
     const today = dateKey(new Date());
-    // Actionable pool: not done, not a habit's own recurring entry, and not
-    // inside a doc-mode branch (reference material has no "due" concept).
-    const actionable = items.filter((it) => !it.done && it.type !== "habits" && !isDocMode(it.id));
-
     const effectiveDue = (it) => it.dueDate || (it.type === "milestones" ? it.targetDate : null);
 
-    const todayItems = actionable.filter((it) => effectiveDue(it) === today);
-    const overdueItems = actionable
-      .filter((it) => {
-        const d = effectiveDue(it);
-        return d && d < today;
-      })
-      .sort((a, b) => effectiveDue(a).localeCompare(effectiveDue(b)));
-    const blockedItems = actionable.filter((it) => it.blocked);
-    const upcomingItems = actionable
-      .filter((it) => {
-        const d = effectiveDue(it);
-        return d && d > today;
-      })
-      .sort((a, b) => effectiveDue(a).localeCompare(effectiveDue(b)))
-      .slice(0, 8);
+    // Every leaf, non-done, actionable task anywhere in the tree — a leaf is
+    // a task with no children (habits are their own recurring entry and
+    // doc-mode branches are reference material, so neither counts as a task).
+    const leafPool = items.filter(
+      (it) => !it.done && it.type !== "habits" && !isDocMode(it.id) && (childrenOf[it.id] || []).length === 0
+    );
 
     const priorityRank = { high: 0, med: 1, low: 2 };
-    const focus = [...overdueItems, ...todayItems, ...blockedItems]
-      .filter((v, i, arr) => arr.findIndex((x) => x.id === v.id) === i)
-      .sort((a, b) => priorityRank[a.priority] - priorityRank[b.priority])
-      .slice(0, 3);
+    const sorters = {
+      priority: (a, b) => priorityRank[a.priority] - priorityRank[b.priority] || a.title.localeCompare(b.title),
+      due: (a, b) => {
+        const da = effectiveDue(a);
+        const db = effectiveDue(b);
+        if (da && db) return da.localeCompare(db);
+        if (da) return -1;
+        if (db) return 1;
+        return a.title.localeCompare(b.title);
+      },
+      location: (a, b) => locationLabel(a.id).localeCompare(locationLabel(b.id)) || a.title.localeCompare(b.title),
+      az: (a, b) => a.title.localeCompare(b.title),
+    };
+
+    const allLeafTasks = [...leafPool].sort(sorters[homeSort] || sorters.priority);
 
     const branches = items
       .filter((it) => it.parentId == null && !it.docMode)
       .map((it) => ({ item: it, progress: progressOf(it.id) }))
       .filter((b) => b.progress.total > 0);
 
-    return { todayItems, overdueItems, blockedItems, upcomingItems, focus, branches };
-  }, [items, byId]);
+    return { allLeafTasks, branches, today, effectiveDue };
+  }, [items, byId, childrenOf, homeSort]);
 
   const drillInto = (id) => setStack((s) => [...s, id]);
   const goBack = () => setStack((s) => s.slice(0, -1));
@@ -406,18 +417,6 @@ export default function TaskLedger() {
       cur = cur.parentId != null ? byId[cur.parentId] : null;
     }
     setStack(path);
-  };
-
-  // Location breadcrumb text for a task, excluding the top-level root itself
-  // (e.g. "Development / Backend / Competition System") — used on Home rows.
-  const locationLabel = (id) => {
-    const names = [];
-    let cur = byId[id]?.parentId != null ? byId[byId[id].parentId] : null;
-    while (cur) {
-      names.unshift(cur.title);
-      cur = cur.parentId != null ? byId[cur.parentId] : null;
-    }
-    return names.slice(1).join(" / ") || names.join(" / ");
   };
 
   return (
@@ -819,6 +818,8 @@ export default function TaskLedger() {
           justStamped={justStamped}
           onOpen={(id) => drillToPath(id)}
           locationLabel={locationLabel}
+          homeSort={homeSort}
+          setHomeSort={setHomeSort}
         />
       )}
 
@@ -1696,9 +1697,34 @@ function ChevronDownIcon() {
   );
 }
 
-function HomeTaskRow({ item, toggleItem, justStamped, onOpen, locationLabel, tint }) {
+function HomeBadge({ label, color }) {
+  return (
+    <span
+      style={{
+        fontSize: 10,
+        fontWeight: 700,
+        letterSpacing: "0.03em",
+        textTransform: "uppercase",
+        color,
+        border: `1px solid ${color}`,
+        borderRadius: 5,
+        padding: "1px 5px",
+        flexShrink: 0,
+      }}
+    >
+      {label}
+    </span>
+  );
+}
+
+function HomeTaskRow({ item, toggleItem, justStamped, onOpen, locationLabel, today, effectiveDue }) {
   const color = typeMap[item.type]?.color || "#7C7BA6";
   const loc = locationLabel(item.id);
+  const due = effectiveDue ? effectiveDue(item) : item.dueDate;
+  const isOverdue = due && today && due < today;
+  const isToday = due && today && due === today;
+  const tint = item.blocked ? "#D9954B" : isOverdue ? "#C9614B" : color;
+
   return (
     <div
       onClick={() => onOpen(item.id)}
@@ -1708,7 +1734,7 @@ function HomeTaskRow({ item, toggleItem, justStamped, onOpen, locationLabel, tin
         gap: 10,
         background: "#211E1B",
         border: "1px solid #2E2B26",
-        borderLeft: `3px solid ${tint || color}`,
+        borderLeft: `3px solid ${tint}`,
         borderRadius: 8,
         padding: "10px 12px",
         cursor: "pointer",
@@ -1740,6 +1766,14 @@ function HomeTaskRow({ item, toggleItem, justStamped, onOpen, locationLabel, tin
         <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
           <span style={{ fontSize: 14, color: "#EDE8DF" }}>{item.title}</span>
           {item.priority === "high" && <Flame size={11} color="#C9A24B" />}
+          {isOverdue && <HomeBadge label="Overdue" color="#C9614B" />}
+          {!isOverdue && isToday && <HomeBadge label="Today" color="#C9A24B" />}
+          {item.blocked && <HomeBadge label="Blocked" color="#D9954B" />}
+          {due && !isOverdue && !isToday && (
+            <span style={{ fontSize: 10.5, fontFamily: "ui-monospace, monospace", color: "#6E6858" }}>
+              {due.slice(5)}
+            </span>
+          )}
         </div>
         <div style={{ fontSize: 11, color: "#6E6858", marginTop: 3, overflowWrap: "break-word" }}>
           {loc || typeMap[item.type]?.label}
@@ -1774,62 +1808,42 @@ function HomeSection({ title, tint, children, emptyText }) {
   );
 }
 
-function HomeDashboard({ data, toggleItem, justStamped, onOpen, locationLabel }) {
-  const { focus, todayItems, overdueItems, blockedItems, upcomingItems, branches } = data;
+const HOME_SORT_OPTIONS = [
+  { id: "priority", label: "Sort: Priority" },
+  { id: "due", label: "Sort: Due date" },
+  { id: "location", label: "Sort: Location" },
+  { id: "az", label: "Sort: Name (A–Z)" },
+];
+
+function HomeDashboard({ data, toggleItem, justStamped, onOpen, locationLabel, homeSort, setHomeSort }) {
+  const { allLeafTasks, branches, today, effectiveDue } = data;
 
   return (
     <div>
-      {focus.length > 0 && (
-        <HomeSection title="🎯 Focus — next up" tint="#C9A24B">
-          {focus.map((it) => (
-            <HomeTaskRow key={it.id} item={it} toggleItem={toggleItem} justStamped={justStamped} onOpen={onOpen} locationLabel={locationLabel} tint="#C9A24B" />
+      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 12 }}>
+        <select value={homeSort} onChange={(e) => setHomeSort(e.target.value)} style={selectStyle("#3A362E")}>
+          {HOME_SORT_OPTIONS.map((o) => (
+            <option key={o.id} value={o.id}>
+              {o.label}
+            </option>
           ))}
-        </HomeSection>
-      )}
+        </select>
+      </div>
 
-      <HomeSection title="Today" emptyText="Nothing due today.">
-        {todayItems.map((it) => (
-          <HomeTaskRow key={it.id} item={it} toggleItem={toggleItem} justStamped={justStamped} onOpen={onOpen} locationLabel={locationLabel} />
+      <HomeSection title={`All Tasks · ${allLeafTasks.length}`} emptyText="No open tasks. Add one to get started.">
+        {allLeafTasks.map((it) => (
+          <HomeTaskRow
+            key={it.id}
+            item={it}
+            toggleItem={toggleItem}
+            justStamped={justStamped}
+            onOpen={onOpen}
+            locationLabel={locationLabel}
+            today={today}
+            effectiveDue={effectiveDue}
+          />
         ))}
       </HomeSection>
-
-      {overdueItems.length > 0 && (
-        <HomeSection title="🔴 Overdue" tint="#C9614B">
-          {overdueItems.map((it) => (
-            <HomeTaskRow key={it.id} item={it} toggleItem={toggleItem} justStamped={justStamped} onOpen={onOpen} locationLabel={locationLabel} tint="#C9614B" />
-          ))}
-        </HomeSection>
-      )}
-
-      {blockedItems.length > 0 && (
-        <HomeSection title="🟠 Blocked" tint="#D9954B">
-          {blockedItems.map((it) => (
-            <HomeTaskRow key={it.id} item={it} toggleItem={toggleItem} justStamped={justStamped} onOpen={onOpen} locationLabel={locationLabel} tint="#D9954B" />
-          ))}
-        </HomeSection>
-      )}
-
-      {upcomingItems.length > 0 && (
-        <HomeSection title="Upcoming">
-          {upcomingItems.map((it) => (
-            <div key={it.id} style={{ position: "relative" }}>
-              <HomeTaskRow item={it} toggleItem={toggleItem} justStamped={justStamped} onOpen={onOpen} locationLabel={locationLabel} />
-              <span
-                style={{
-                  position: "absolute",
-                  top: 10,
-                  right: 12,
-                  fontSize: 10,
-                  fontFamily: "ui-monospace, monospace",
-                  color: "#6E6858",
-                }}
-              >
-                {(it.dueDate || it.targetDate)?.slice(5)}
-              </span>
-            </div>
-          ))}
-        </HomeSection>
-      )}
 
       {branches.length > 0 && (
         <div>
@@ -1867,11 +1881,6 @@ function HomeDashboard({ data, toggleItem, justStamped, onOpen, locationLabel })
         </div>
       )}
 
-      {focus.length === 0 && todayItems.length === 0 && overdueItems.length === 0 && blockedItems.length === 0 && upcomingItems.length === 0 && branches.length === 0 && (
-        <div style={{ padding: "28px 10px", textAlign: "center", color: "#5E594E", fontSize: 13 }}>
-          Nothing scheduled or blocked. Set due dates on tasks to see them here.
-        </div>
-      )}
     </div>
   );
 }
