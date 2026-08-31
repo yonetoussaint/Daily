@@ -1257,9 +1257,16 @@ function MilestonePanel({ item, progress, onChange }) {
   );
 }
 
+const PRIORITY_META = {
+  high: { label: "High", short: "High priority", color: "#C9614B" },
+  med: { label: "Med", short: "Med priority", color: "#C9A24B" },
+  low: { label: "Low", short: "Low priority", color: "#6E6858" },
+};
+
 function StatusPanel({ item, updateField }) {
   const [expanded, setExpanded] = useState(!!item.dueDate || !!item.blocked);
   const color = typeMap[item.type]?.color || "#7C7BA6";
+  const priorityMeta = PRIORITY_META[item.priority] || PRIORITY_META.med;
 
   let dueLabel = null;
   if (item.dueDate) {
@@ -1291,6 +1298,9 @@ function StatusPanel({ item, updateField }) {
         </span>
         {!expanded && (
           <span style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <span style={{ fontSize: 11, color: priorityMeta.color, fontFamily: "ui-monospace, monospace" }}>
+              {priorityMeta.short}
+            </span>
             {dueLabel && (
               <span style={{ fontSize: 11, color: dueLabel.color, fontFamily: "ui-monospace, monospace" }}>
                 {dueLabel.text}
@@ -1312,6 +1322,34 @@ function StatusPanel({ item, updateField }) {
             gap: 12,
           }}
         >
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
+            <span style={{ fontSize: 12.5, color: "#C9C3B6" }}>Priority</span>
+            <div style={{ display: "flex", gap: 6 }}>
+              {PRIORITIES.map((p) => {
+                const meta = PRIORITY_META[p];
+                const active = item.priority === p;
+                return (
+                  <button
+                    key={p}
+                    onClick={() => updateField(item.id, "priority", p)}
+                    style={{
+                      fontSize: 11.5,
+                      fontWeight: 600,
+                      padding: "5px 10px",
+                      borderRadius: 7,
+                      border: `1px solid ${active ? meta.color : "#33302B"}`,
+                      background: active ? `${meta.color}26` : "#1A1816",
+                      color: active ? meta.color : "#948E80",
+                      cursor: "pointer",
+                    }}
+                  >
+                    {meta.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
             <span style={{ fontSize: 12.5, color: "#C9C3B6" }}>Due date</span>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -1899,6 +1937,11 @@ const HOME_SORT_OPTIONS = [
 
 function HomeDashboard({ data, toggleItem, justStamped, onOpen, locationLabel, homeSort, setHomeSort, renameItem }) {
   const { allLeafTasks, groups, today, effectiveDue } = data;
+  // Per-group priority sections are collapsible dropdowns; only the highest
+  // priority present in a given parent auto-opens, med/low stay tucked away
+  // until tapped. Keyed by `${rootId}:${priority}` so state is independent
+  // per parent group.
+  const [openPriority, setOpenPriority] = useState({});
 
   return (
     <div>
@@ -1932,6 +1975,15 @@ function HomeDashboard({ data, toggleItem, justStamped, onOpen, locationLabel, h
       {groups.map(({ root, tasks, progress }) => {
         const color = typeMap[root.type]?.color || "#7C7BA6";
         const pct = progress.total > 0 ? Math.round((progress.done / progress.total) * 100) : 0;
+
+        // Sub-group this parent's tasks by priority, keeping the order the
+        // tasks already arrived in (per the top homeSort control) within
+        // each priority band.
+        const byPriority = { high: [], med: [], low: [] };
+        tasks.forEach((t) => (byPriority[t.priority] || byPriority.med).push(t));
+        const priorityKeys = ["high", "med", "low"].filter((p) => byPriority[p].length > 0);
+        const topPriority = priorityKeys[0];
+
         return (
           <div key={root.id} style={{ marginBottom: 22 }}>
             <div onClick={() => onOpen(root.id)} style={{ cursor: "pointer", marginBottom: 10 }}>
@@ -1979,20 +2031,56 @@ function HomeDashboard({ data, toggleItem, justStamped, onOpen, locationLabel, h
                 </div>
               )}
             </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-              {tasks.map((it) => (
-                <HomeTaskRow
-                  key={it.id}
-                  item={it}
-                  toggleItem={toggleItem}
-                  justStamped={justStamped}
-                  onOpen={onOpen}
-                  locationLabel={locationLabel}
-                  today={today}
-                  effectiveDue={effectiveDue}
-                  renameItem={renameItem}
-                />
-              ))}
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {priorityKeys.map((p) => {
+                const key = `${root.id}:${p}`;
+                const isOpen = openPriority[key] !== undefined ? openPriority[key] : p === topPriority;
+                const meta = PRIORITY_META[p];
+                return (
+                  <div key={p}>
+                    <button
+                      onClick={() => setOpenPriority((s) => ({ ...s, [key]: !isOpen }))}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 6,
+                        background: "transparent",
+                        border: "none",
+                        cursor: "pointer",
+                        padding: "2px 0 6px",
+                        width: "100%",
+                        textAlign: "left",
+                      }}
+                    >
+                      {isOpen ? <ChevronDownIcon /> : <ChevronRight size={12} color="#6E6858" />}
+                      <span style={{ width: 6, height: 6, borderRadius: "50%", background: meta.color, flexShrink: 0 }} />
+                      <span style={{ fontSize: 11.5, fontWeight: 600, color: "#948E80", letterSpacing: "0.01em" }}>
+                        {meta.short}
+                      </span>
+                      <span style={{ fontSize: 10.5, color: "#5E594E", fontFamily: "ui-monospace, monospace" }}>
+                        {byPriority[p].length}
+                      </span>
+                    </button>
+                    {isOpen && (
+                      <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 4 }}>
+                        {byPriority[p].map((it) => (
+                          <HomeTaskRow
+                            key={it.id}
+                            item={it}
+                            toggleItem={toggleItem}
+                            justStamped={justStamped}
+                            onOpen={onOpen}
+                            locationLabel={locationLabel}
+                            today={today}
+                            effectiveDue={effectiveDue}
+                            renameItem={renameItem}
+                          />
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </div>
         );
