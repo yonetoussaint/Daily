@@ -51,6 +51,7 @@ const mk = (title, type, priority, parentId, doneOffset) => ({
   priority,
   done: !!doneOffset,
   created: Date.now() - (doneOffset || Math.random() * 200000000),
+  completedAt: doneOffset ? dateKey(new Date(Date.now() - doneOffset)) : null,
   completions: [],
   notes: "",
   purpose: "",
@@ -130,6 +131,20 @@ function currentStreak(completions) {
     d.setDate(d.getDate() - 1);
   }
   return streak;
+}
+const WEEKDAY_LETTERS = ["S", "M", "T", "W", "T", "F", "S"];
+function currentWeekDays() {
+  // Sunday–Saturday for the week containing today.
+  const now = new Date();
+  const sunday = new Date(now);
+  sunday.setDate(now.getDate() - now.getDay());
+  const days = [];
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(sunday);
+    d.setDate(sunday.getDate() + i);
+    days.push(d);
+  }
+  return days;
 }
 
 export default function TaskLedger() {
@@ -242,6 +257,7 @@ export default function TaskLedger() {
         priority: draftPriority,
         done: false,
         created: Date.now(),
+        completedAt: null,
         completions: [],
         notes: "",
         purpose: "",
@@ -278,7 +294,7 @@ export default function TaskLedger() {
           setJustStamped(id);
           setTimeout(() => setJustStamped((cur) => (cur === id ? null : cur)), 500);
         }
-        return { ...it, done: !it.done };
+        return { ...it, done: !it.done, completedAt: !it.done ? todayKey() : null };
       })
     );
   };
@@ -422,6 +438,40 @@ export default function TaskLedger() {
 
     return { allLeafTasks, groups, today, effectiveDue };
   }, [items, byId, childrenOf, homeSort]);
+
+  // Sun–Sat strip for the current week: each circle's fill reflects how much
+  // got done that day. Habits are the recurring "slots" a day can fill
+  // (partial fill when only some are checked); a one-off task completed that
+  // day always counts as its own fully-filled slot, whether or not it had a
+  // matching due date.
+  const weekStrip = useMemo(() => {
+    const habits = items.filter((it) => it.type === "habits");
+    const leafTasks = items.filter(
+      (it) => it.type !== "habits" && !isDocMode(it.id) && (childrenOf[it.id] || []).length === 0
+    );
+    const effectiveDue = (it) => it.dueDate || (it.type === "milestones" ? it.targetDate : null);
+    const todayStr = todayKey();
+
+    return currentWeekDays().map((d) => {
+      const key = dateKey(d);
+      const habitDone = habits.filter((h) => (h.completions || []).includes(key)).length;
+      const dueTasks = leafTasks.filter((t) => effectiveDue(t) === key);
+      const dueDone = dueTasks.filter((t) => t.done).length;
+      const extraDone = leafTasks.filter((t) => t.completedAt === key && effectiveDue(t) !== key).length;
+
+      const total = habits.length + dueTasks.length + extraDone;
+      const done = habitDone + dueDone + extraDone;
+
+      return {
+        key,
+        label: WEEKDAY_LETTERS[d.getDay()],
+        dayNum: d.getDate(),
+        isToday: key === todayStr,
+        isFuture: key > todayStr,
+        pct: total > 0 ? Math.round((done / total) * 100) : 0,
+      };
+    });
+  }, [items, childrenOf]);
 
   const drillInto = (id) => setStack((s) => [...s, id]);
   const goBack = () => setStack((s) => s.slice(0, -1));
@@ -729,6 +779,9 @@ export default function TaskLedger() {
       >
         <Plus size={24} color="#1A1816" strokeWidth={2.5} />
       </button>
+
+      {/* Week-at-a-glance strip — only at the root screen */}
+      {!currentItem && <DayStrip days={weekStrip} />}
 
       {/* Home / Structure toggle — only at the root screen */}
       {!currentItem && (
@@ -2067,6 +2120,69 @@ const HOME_SORT_OPTIONS = [
   { id: "location", label: "Sort: Location" },
   { id: "az", label: "Sort: Name (A–Z)" },
 ];
+
+function DayStrip({ days }) {
+  return (
+    <div style={{ display: "flex", justifyContent: "space-between", gap: 4, marginBottom: 18 }}>
+      {days.map((d) => {
+        const ringColor = d.isToday ? "#C9A24B" : "#7A9B76";
+        const filled = d.pct >= 100;
+        return (
+          <div
+            key={d.key}
+            style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 5, flex: 1, minWidth: 0 }}
+          >
+            <span
+              style={{
+                fontSize: 10,
+                fontWeight: 700,
+                letterSpacing: "0.04em",
+                textTransform: "uppercase",
+                color: d.isToday ? "#C9A24B" : "#6E6858",
+              }}
+            >
+              {d.label}
+            </span>
+            <div
+              style={{
+                width: 30,
+                height: 30,
+                borderRadius: "50%",
+                boxSizing: "border-box",
+                background:
+                  d.pct > 0
+                    ? `conic-gradient(${ringColor} ${d.pct * 3.6}deg, #26221D ${d.pct * 3.6}deg 360deg)`
+                    : "#26221D",
+                border: filled ? `1px solid ${ringColor}` : "1px solid #33302B",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <div
+                style={{
+                  width: 22,
+                  height: 22,
+                  borderRadius: "50%",
+                  background: "#1A1816",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: 10,
+                  fontFamily: "ui-monospace, monospace",
+                  fontWeight: d.isToday ? 700 : 500,
+                  color: d.isToday ? "#EDE8DF" : d.isFuture ? "#4A453B" : "#8A8478",
+                }}
+              >
+                {d.dayNum}
+              </div>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
 function HomeDashboard({ data, toggleItem, justStamped, onOpen, locationLabel, homeSort, setHomeSort, renameItem, updateField }) {
   const { allLeafTasks, groups, today, effectiveDue } = data;
