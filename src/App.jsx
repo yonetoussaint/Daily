@@ -393,11 +393,19 @@ export default function TaskLedger() {
     const today = dateKey(new Date());
     const effectiveDue = (it) => it.dueDate || (it.type === "milestones" ? it.targetDate : null);
 
-    // Every leaf, non-done, actionable task anywhere in the tree — a leaf is
-    // a task with no children (habits are their own recurring entry and
-    // doc-mode branches are reference material, so neither counts as a task).
+    // Every leaf, actionable task anywhere in the tree — a leaf is a task
+    // with no children (habits are their own recurring entry and doc-mode
+    // branches are reference material, so neither counts as a task). Tasks
+    // finished today stay in the list instead of vanishing the moment
+    // they're checked off — seeing them sit there, done, is what makes the
+    // day's progress feel real. Tasks done on an earlier day have already
+    // had their moment and drop out to keep the list current.
     const leafPool = items.filter(
-      (it) => !it.done && it.type !== "habits" && !isDocMode(it.id) && (childrenOf[it.id] || []).length === 0
+      (it) =>
+        (!it.done || it.completedAt === today) &&
+        it.type !== "habits" &&
+        !isDocMode(it.id) &&
+        (childrenOf[it.id] || []).length === 0
     );
 
     const priorityRank = { high: 0, med: 1, low: 2 };
@@ -2069,36 +2077,43 @@ function HomeTaskRow({ item, toggleItem, justStamped, onOpen, locationLabel, tod
             e.stopPropagation();
             toggleItem(item.id);
           }}
-          aria-label="Mark complete"
+          aria-label={item.done ? "Mark incomplete" : "Mark complete"}
           style={{
             width: 22,
             height: 22,
             marginTop: 1,
             borderRadius: 6,
-            border: "1.5px solid #4A4539",
-            background: "transparent",
+            border: item.done ? `1.5px solid ${tint}` : "1.5px solid #4A4539",
+            background: item.done ? tint : "transparent",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
             cursor: "pointer",
             flexShrink: 0,
             transform: justStamped === item.id ? "scale(1.35) rotate(-8deg)" : "scale(1) rotate(0deg)",
-            transition: "transform 0.35s cubic-bezier(.34,1.56,.64,1)",
+            transition: "transform 0.35s cubic-bezier(.34,1.56,.64,1), background 0.15s ease",
           }}
-        />
-        <div style={{ flex: 1, minWidth: 0 }}>
+        >
+          {item.done && <Check size={14} color="#1A1816" strokeWidth={3} />}
+        </button>
+        <div style={{ flex: 1, minWidth: 0, opacity: item.done ? 0.6 : 1 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
             <EditableTitle
               value={item.title}
               onSave={(t) => renameItem(item.id, t)}
-              textStyle={{ fontSize: 14, color: "#EDE8DF" }}
+              textStyle={{
+                fontSize: 14,
+                color: "#EDE8DF",
+                textDecoration: item.done ? "line-through" : "none",
+              }}
               inputStyle={{ fontSize: 14, minWidth: 0, flex: 1 }}
             />
-            {item.priority === "high" && <Flame size={11} color="#C9A24B" />}
-            {isOverdue && <HomeBadge label="Overdue" color="#C9614B" />}
-            {!isOverdue && isToday && <HomeBadge label="Today" color="#C9A24B" />}
-            {item.blocked && <HomeBadge label="Blocked" color="#D9954B" />}
-            {due && !isOverdue && !isToday && (
+            {!item.done && item.priority === "high" && <Flame size={11} color="#C9A24B" />}
+            {!item.done && isOverdue && <HomeBadge label="Overdue" color="#C9614B" />}
+            {!item.done && !isOverdue && isToday && <HomeBadge label="Today" color="#C9A24B" />}
+            {!item.done && item.blocked && <HomeBadge label="Blocked" color="#D9954B" />}
+            {item.done && <HomeBadge label="Done" color="#7A9B76" />}
+            {!item.done && due && !isOverdue && !isToday && (
               <span style={{ fontSize: 10.5, fontFamily: "ui-monospace, monospace", color: "#6E6858" }}>
                 {due.slice(5)}
               </span>
@@ -2106,7 +2121,7 @@ function HomeTaskRow({ item, toggleItem, justStamped, onOpen, locationLabel, tod
           </div>
           <div style={{ fontSize: 11, color: "#6E6858", marginTop: 3, overflowWrap: "break-word" }}>
             {loc || typeMap[item.type]?.label}
-            {item.blocked && item.blockedReason ? ` · Waiting on: ${item.blockedReason}` : ""}
+            {!item.done && item.blocked && item.blockedReason ? ` · Waiting on: ${item.blockedReason}` : ""}
           </div>
         </div>
       </div>
