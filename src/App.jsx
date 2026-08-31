@@ -850,6 +850,7 @@ export default function TaskLedger() {
           homeSort={homeSort}
           setHomeSort={setHomeSort}
           renameItem={renameItem}
+          updateField={updateField}
         />
       )}
 
@@ -1856,7 +1857,67 @@ function HomeBadge({ label, color }) {
   );
 }
 
-function HomeTaskRow({ item, toggleItem, justStamped, onOpen, locationLabel, today, effectiveDue, renameItem }) {
+// ---- Swipe-to-reveal (priority picker) ----
+// Classic iOS swipe-actions pattern: content sits on top of a hidden
+// actions layer, and dragging left translates the content to reveal it.
+// Pointer events unify touch and mouse. A `moved` flag distinguishes a
+// genuine tap (which opens the row) from a drag (which shouldn't).
+const SWIPE_REVEAL_WIDTH = 168; // px of actions revealed when fully open
+const SWIPE_TAP_TOLERANCE = 6; // px of movement still treated as a tap
+
+function useSwipeReveal({ revealWidth = SWIPE_REVEAL_WIDTH } = {}) {
+  const [offset, setOffset] = useState(0); // 0 = closed, negative = revealed
+  const [dragging, setDragging] = useState(false);
+  const pointerId = useRef(null);
+  const startX = useRef(0);
+  const startOffset = useRef(0);
+  const moved = useRef(false);
+
+  const close = () => setOffset(0);
+
+  const onPointerDown = (e) => {
+    if (e.pointerType === "mouse" && e.button !== 0) return;
+    pointerId.current = e.pointerId;
+    startX.current = e.clientX;
+    startOffset.current = offset;
+    moved.current = false;
+    setDragging(true);
+  };
+
+  const onPointerMove = (e) => {
+    if (pointerId.current !== e.pointerId) return;
+    const dx = e.clientX - startX.current;
+    if (Math.abs(dx) > SWIPE_TAP_TOLERANCE) moved.current = true;
+    const next = Math.min(0, Math.max(-revealWidth, startOffset.current + dx));
+    setOffset(next);
+  };
+
+  const endDrag = (e) => {
+    if (pointerId.current !== e.pointerId) return;
+    pointerId.current = null;
+    setDragging(false);
+    // Snap fully open or fully closed depending on how far past the
+    // midpoint the drag went — swiping right (or a short left swipe)
+    // closes it back up without changing anything.
+    setOffset((current) => (current <= -revealWidth / 2 ? -revealWidth : 0));
+  };
+
+  return {
+    offset,
+    dragging,
+    isOpen: offset < 0,
+    moved,
+    close,
+    handlers: {
+      onPointerDown,
+      onPointerMove,
+      onPointerUp: endDrag,
+      onPointerCancel: endDrag,
+    },
+  };
+}
+
+function HomeTaskRow({ item, toggleItem, justStamped, onOpen, locationLabel, today, effectiveDue, renameItem, updateField }) {
   const color = typeMap[item.type]?.color || "#7C7BA6";
   const loc = locationLabel(item.id);
   const due = effectiveDue ? effectiveDue(item) : item.dueDate;
@@ -1864,64 +1925,136 @@ function HomeTaskRow({ item, toggleItem, justStamped, onOpen, locationLabel, tod
   const isToday = due && today && due === today;
   const tint = item.blocked ? "#D9954B" : isOverdue ? "#C9614B" : color;
 
+  const { offset, dragging, isOpen, moved, close, handlers } = useSwipeReveal();
+
+  const handleRowClick = () => {
+    // A real drag shouldn't also trigger the tap-to-open action.
+    if (moved.current) {
+      moved.current = false;
+      return;
+    }
+    if (isOpen) {
+      close();
+      return;
+    }
+    onOpen(item.id);
+  };
+
+  const pickPriority = (p) => {
+    updateField(item.id, "priority", p);
+    close();
+  };
+
   return (
-    <div
-      onClick={() => onOpen(item.id)}
-      style={{
-        display: "flex",
-        alignItems: "flex-start",
-        gap: 10,
-        background: "#211E1B",
-        border: "1px solid #2E2B26",
-        borderLeft: `3px solid ${tint}`,
-        borderRadius: 8,
-        padding: "10px 12px",
-        cursor: "pointer",
-      }}
-    >
-      <button
-        onClick={(e) => {
-          e.stopPropagation();
-          toggleItem(item.id);
-        }}
-        aria-label="Mark complete"
+    <div style={{ position: "relative", borderRadius: 8, overflow: "hidden" }}>
+      {/* Hidden priority-picker layer, revealed as the content swipes left */}
+      <div
         style={{
-          width: 22,
-          height: 22,
-          marginTop: 1,
-          borderRadius: 6,
-          border: "1.5px solid #4A4539",
-          background: "transparent",
+          position: "absolute",
+          top: 0,
+          bottom: 0,
+          right: 0,
+          width: SWIPE_REVEAL_WIDTH,
           display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          cursor: "pointer",
-          flexShrink: 0,
-          transform: justStamped === item.id ? "scale(1.35) rotate(-8deg)" : "scale(1) rotate(0deg)",
-          transition: "transform 0.35s cubic-bezier(.34,1.56,.64,1)",
         }}
-      />
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-          <EditableTitle
-            value={item.title}
-            onSave={(t) => renameItem(item.id, t)}
-            textStyle={{ fontSize: 14, color: "#EDE8DF" }}
-            inputStyle={{ fontSize: 14, minWidth: 0, flex: 1 }}
-          />
-          {item.priority === "high" && <Flame size={11} color="#C9A24B" />}
-          {isOverdue && <HomeBadge label="Overdue" color="#C9614B" />}
-          {!isOverdue && isToday && <HomeBadge label="Today" color="#C9A24B" />}
-          {item.blocked && <HomeBadge label="Blocked" color="#D9954B" />}
-          {due && !isOverdue && !isToday && (
-            <span style={{ fontSize: 10.5, fontFamily: "ui-monospace, monospace", color: "#6E6858" }}>
-              {due.slice(5)}
-            </span>
-          )}
-        </div>
-        <div style={{ fontSize: 11, color: "#6E6858", marginTop: 3, overflowWrap: "break-word" }}>
-          {loc || typeMap[item.type]?.label}
-          {item.blocked && item.blockedReason ? ` · Waiting on: ${item.blockedReason}` : ""}
+      >
+        {PRIORITIES.map((p) => {
+          const meta = PRIORITY_META[p];
+          const active = item.priority === p;
+          return (
+            <button
+              key={p}
+              onClick={(e) => {
+                e.stopPropagation();
+                pickPriority(p);
+              }}
+              aria-label={`Set ${meta.label} priority`}
+              style={{
+                flex: 1,
+                border: "none",
+                borderLeft: "1px solid rgba(0,0,0,0.15)",
+                background: meta.color,
+                color: "#1A1816",
+                fontSize: 11,
+                fontWeight: 700,
+                letterSpacing: "0.01em",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                opacity: active ? 1 : 0.82,
+              }}
+            >
+              {meta.label}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Foreground content — slides left via pointer drag to reveal actions */}
+      <div
+        onClick={handleRowClick}
+        {...handlers}
+        style={{
+          display: "flex",
+          alignItems: "flex-start",
+          gap: 10,
+          background: "#211E1B",
+          border: "1px solid #2E2B26",
+          borderLeft: `3px solid ${tint}`,
+          borderRadius: 8,
+          padding: "10px 12px",
+          cursor: "pointer",
+          position: "relative",
+          touchAction: "pan-y",
+          transform: `translateX(${offset}px)`,
+          transition: dragging ? "none" : "transform 0.2s ease",
+        }}
+      >
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            toggleItem(item.id);
+          }}
+          aria-label="Mark complete"
+          style={{
+            width: 22,
+            height: 22,
+            marginTop: 1,
+            borderRadius: 6,
+            border: "1.5px solid #4A4539",
+            background: "transparent",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            cursor: "pointer",
+            flexShrink: 0,
+            transform: justStamped === item.id ? "scale(1.35) rotate(-8deg)" : "scale(1) rotate(0deg)",
+            transition: "transform 0.35s cubic-bezier(.34,1.56,.64,1)",
+          }}
+        />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+            <EditableTitle
+              value={item.title}
+              onSave={(t) => renameItem(item.id, t)}
+              textStyle={{ fontSize: 14, color: "#EDE8DF" }}
+              inputStyle={{ fontSize: 14, minWidth: 0, flex: 1 }}
+            />
+            {item.priority === "high" && <Flame size={11} color="#C9A24B" />}
+            {isOverdue && <HomeBadge label="Overdue" color="#C9614B" />}
+            {!isOverdue && isToday && <HomeBadge label="Today" color="#C9A24B" />}
+            {item.blocked && <HomeBadge label="Blocked" color="#D9954B" />}
+            {due && !isOverdue && !isToday && (
+              <span style={{ fontSize: 10.5, fontFamily: "ui-monospace, monospace", color: "#6E6858" }}>
+                {due.slice(5)}
+              </span>
+            )}
+          </div>
+          <div style={{ fontSize: 11, color: "#6E6858", marginTop: 3, overflowWrap: "break-word" }}>
+            {loc || typeMap[item.type]?.label}
+            {item.blocked && item.blockedReason ? ` · Waiting on: ${item.blockedReason}` : ""}
+          </div>
         </div>
       </div>
     </div>
@@ -1935,7 +2068,7 @@ const HOME_SORT_OPTIONS = [
   { id: "az", label: "Sort: Name (A–Z)" },
 ];
 
-function HomeDashboard({ data, toggleItem, justStamped, onOpen, locationLabel, homeSort, setHomeSort, renameItem }) {
+function HomeDashboard({ data, toggleItem, justStamped, onOpen, locationLabel, homeSort, setHomeSort, renameItem, updateField }) {
   const { allLeafTasks, groups, today, effectiveDue } = data;
   // Per-group priority sections are collapsible dropdowns; only the highest
   // priority present in a given parent auto-opens, med/low stay tucked away
@@ -2074,6 +2207,7 @@ function HomeDashboard({ data, toggleItem, justStamped, onOpen, locationLabel, h
                             today={today}
                             effectiveDue={effectiveDue}
                             renameItem={renameItem}
+                            updateField={updateField}
                           />
                         ))}
                       </div>
