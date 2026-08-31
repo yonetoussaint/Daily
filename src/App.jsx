@@ -416,15 +416,11 @@ export default function TaskLedger() {
       .map((root) => ({
         root,
         tasks: allLeafTasks.filter((t) => rootOf(t.id)?.id === root.id),
+        progress: progressOf(root.id),
       }))
       .filter((g) => g.tasks.length > 0);
 
-    const branches = items
-      .filter((it) => it.parentId == null && !it.docMode)
-      .map((it) => ({ item: it, progress: progressOf(it.id) }))
-      .filter((b) => b.progress.total > 0);
-
-    return { allLeafTasks, groups, branches, today, effectiveDue };
+    return { allLeafTasks, groups, today, effectiveDue };
   }, [items, byId, childrenOf, homeSort]);
 
   const drillInto = (id) => setStack((s) => [...s, id]);
@@ -1902,7 +1898,7 @@ const HOME_SORT_OPTIONS = [
 ];
 
 function HomeDashboard({ data, toggleItem, justStamped, onOpen, locationLabel, homeSort, setHomeSort, renameItem }) {
-  const { allLeafTasks, groups, branches, today, effectiveDue } = data;
+  const { allLeafTasks, groups, today, effectiveDue } = data;
 
   return (
     <div>
@@ -1933,32 +1929,56 @@ function HomeDashboard({ data, toggleItem, justStamped, onOpen, locationLabel, h
         </div>
       )}
 
-      {groups.map(({ root, tasks }) => {
+      {groups.map(({ root, tasks, progress }) => {
         const color = typeMap[root.type]?.color || "#7C7BA6";
+        const pct = progress.total > 0 ? Math.round((progress.done / progress.total) * 100) : 0;
         return (
           <div key={root.id} style={{ marginBottom: 22 }}>
-            <button
-              onClick={() => onOpen(root.id)}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 7,
-                background: "transparent",
-                border: "none",
-                padding: 0,
-                marginBottom: 8,
-                cursor: "pointer",
-                textAlign: "left",
-              }}
-            >
-              <span style={{ width: 7, height: 7, borderRadius: "50%", background: color, flexShrink: 0 }} />
-              <span style={{ fontSize: 12.5, fontWeight: 600, color: "#C9C3B6", letterSpacing: "0.01em" }}>
-                {root.title}
-              </span>
-              <span style={{ fontSize: 11, color: "#5E594E", fontFamily: "ui-monospace, monospace" }}>
-                {tasks.length}
-              </span>
-            </button>
+            <div onClick={() => onOpen(root.id)} style={{ cursor: "pointer", marginBottom: 10 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 6 }}>
+                <span style={{ width: 7, height: 7, borderRadius: "50%", background: color, flexShrink: 0 }} />
+                <span style={{ fontSize: 12.5, fontWeight: 600, color: "#C9C3B6", letterSpacing: "0.01em" }}>
+                  {root.title}
+                </span>
+                <span style={{ fontSize: 11, color: "#5E594E", fontFamily: "ui-monospace, monospace" }}>
+                  {tasks.length}
+                </span>
+                {progress.total > 0 && (
+                  <span
+                    style={{
+                      fontSize: 11,
+                      fontFamily: "ui-monospace, monospace",
+                      color: "#948E80",
+                      marginLeft: "auto",
+                    }}
+                  >
+                    {progress.done}/{progress.total} · {pct}%
+                  </span>
+                )}
+              </div>
+              {progress.total > 0 && (
+                <div
+                  style={{
+                    width: "100%",
+                    height: 6,
+                    borderRadius: 999,
+                    background: "#211E1B",
+                    border: "1px solid #2E2B26",
+                    overflow: "hidden",
+                  }}
+                >
+                  <div
+                    style={{
+                      width: `${pct}%`,
+                      height: "100%",
+                      borderRadius: 999,
+                      background: color,
+                      transition: "width 0.3s ease",
+                    }}
+                  />
+                </div>
+              )}
+            </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               {tasks.map((it) => (
                 <HomeTaskRow
@@ -1977,43 +1997,6 @@ function HomeDashboard({ data, toggleItem, justStamped, onOpen, locationLabel, h
           </div>
         );
       })}
-
-      {branches.length > 0 && (
-        <div>
-          <div
-            style={{
-              fontSize: 11.5,
-              fontWeight: 700,
-              letterSpacing: "0.04em",
-              color: "#8A8478",
-              marginBottom: 10,
-              textTransform: "uppercase",
-            }}
-          >
-            Progress
-          </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            {branches.map(({ item, progress }) => {
-              const pct = progress.total > 0 ? Math.round((progress.done / progress.total) * 100) : 0;
-              const color = typeMap[item.type]?.color || "#7C7BA6";
-              return (
-                <div key={item.id} onClick={() => onOpen(item.id)} style={{ cursor: "pointer" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 5 }}>
-                    <span style={{ fontSize: 13, color: "#EDE8DF" }}>{item.title}</span>
-                    <span style={{ fontSize: 11.5, fontFamily: "ui-monospace, monospace", color: "#948E80" }}>
-                      {progress.done}/{progress.total} · {pct}%
-                    </span>
-                  </div>
-                  <div style={{ width: "100%", height: 7, borderRadius: 999, background: "#211E1B", border: "1px solid #2E2B26", overflow: "hidden" }}>
-                    <div style={{ width: `${pct}%`, height: "100%", borderRadius: 999, background: color, transition: "width 0.3s ease" }} />
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
     </div>
   );
 }
