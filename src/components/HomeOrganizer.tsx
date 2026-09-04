@@ -134,10 +134,15 @@ function Checkbox({ checked, onClick }) {
 }
 
 // ---------------------------------------------------------------------------
-// row with kebab menu (edit / delete)
+// row with kebab menu (edit / delete) + swipe-left priority picker
 // ---------------------------------------------------------------------------
-function Row({ item, menuOpen, onToggleMenu, onToggle, onEdit, onDelete }) {
+const SWIPE_ACTIONS_WIDTH = 168; // 3 priority buttons, 56px each
+const SWIPE_OPEN_THRESHOLD = SWIPE_ACTIONS_WIDTH / 2;
+
+function Row({ item, menuOpen, onToggleMenu, onToggle, onEdit, onDelete, swipeOpen, onSwipeOpenChange, onSetPriority }) {
   const menuRef = useRef(null);
+  const [dragX, setDragX] = useState(0);
+  const dragState = useRef({ active: false, startX: 0, pointerId: null });
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -148,111 +153,194 @@ function Row({ item, menuOpen, onToggleMenu, onToggle, onEdit, onDelete }) {
     return () => document.removeEventListener("mousedown", handler);
   }, [menuOpen, onToggleMenu]);
 
+  // snap to the parent-controlled open/closed state whenever it changes
+  // (e.g. another row was opened, or the list scrolled)
+  useEffect(() => {
+    setDragX(swipeOpen ? -SWIPE_ACTIONS_WIDTH : 0);
+  }, [swipeOpen]);
+
+  const handlePointerDown = (e) => {
+    if (menuOpen) return;
+    dragState.current = { active: true, startX: e.clientX, pointerId: e.pointerId };
+    e.currentTarget.setPointerCapture?.(e.pointerId);
+  };
+
+  const handlePointerMove = (e) => {
+    const ds = dragState.current;
+    if (!ds.active) return;
+    const delta = e.clientX - ds.startX;
+    const base = swipeOpen ? -SWIPE_ACTIONS_WIDTH : 0;
+    const next = Math.max(-SWIPE_ACTIONS_WIDTH, Math.min(0, base + delta));
+    setDragX(next);
+  };
+
+  const endDrag = () => {
+    if (!dragState.current.active) return;
+    dragState.current.active = false;
+    const shouldOpen = dragX <= -SWIPE_OPEN_THRESHOLD;
+    setDragX(shouldOpen ? -SWIPE_ACTIONS_WIDTH : 0);
+    onSwipeOpenChange(shouldOpen ? item.id : null);
+  };
+
   return (
-    <div
-      style={{
-        position: "relative",
-        display: "flex",
-        alignItems: "center",
-        gap: 12,
-        padding: "12px 18px",
-        borderBottom: `1px solid ${C.border}`,
-        background: C.surface,
-      }}
-    >
-      <Checkbox checked={item.checked} onClick={() => onToggle(item)} />
-
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 7,
-          }}
-        >
-          <span
-            aria-label={PRIORITY_META[item.priority].label}
-            title={PRIORITY_META[item.priority].label}
-            style={{
-              width: 6,
-              height: 6,
-              borderRadius: 999,
-              background: PRIORITY_META[item.priority].color,
-              flexShrink: 0,
-            }}
-          />
-          <span
-            style={{
-              fontSize: 14,
-              color: item.checked ? C.mutedSoft : C.ink,
-              textDecoration: item.checked ? "line-through" : "none",
-              whiteSpace: "nowrap",
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-            }}
-          >
-            {item.name}
-          </span>
-        </div>
-        <div style={{ fontSize: 11.5, color: C.mutedSoft, marginTop: 2, marginLeft: 13 }}>
-          {item.room}
-        </div>
-      </div>
-
-      <button
-        onClick={() => onToggleMenu(menuOpen ? null : item.id)}
-        aria-label="item actions"
+    <div style={{ position: "relative", overflowX: "hidden" }}>
+      {/* revealed priority picker, sits behind the front content */}
+      <div
         style={{
-          background: "transparent",
-          border: "none",
-          color: C.mutedSoft,
-          cursor: "pointer",
-          padding: 6,
-          borderRadius: 6,
+          position: "absolute",
+          inset: 0,
           display: "flex",
+          justifyContent: "flex-end",
         }}
       >
-        <MoreVertical size={16} />
-      </button>
+        {PRIORITIES.map((p) => {
+          const meta = PRIORITY_META[p];
+          return (
+            <button
+              key={p}
+              onClick={() => onSetPriority(item, p)}
+              aria-label={`Set ${meta.label}`}
+              style={{
+                width: SWIPE_ACTIONS_WIDTH / 3,
+                border: "none",
+                background: meta.color,
+                color: "#fff",
+                fontFamily: FONT,
+                fontSize: 11,
+                fontWeight: 600,
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              {p}
+            </button>
+          );
+        })}
+      </div>
 
-      {menuOpen && (
-        <div
-          ref={menuRef}
+      {/* front content, translates left to reveal the picker */}
+      <div
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={endDrag}
+        onPointerCancel={endDrag}
+        style={{
+          position: "relative",
+          zIndex: 1,
+          display: "flex",
+          alignItems: "center",
+          gap: 12,
+          padding: "12px 18px",
+          borderBottom: `1px solid ${C.border}`,
+          background: C.surface,
+          transform: `translateX(${dragX}px)`,
+          transition: dragState.current.active ? "none" : "transform 200ms ease",
+          touchAction: "pan-y",
+        }}
+      >
+        <Checkbox checked={item.checked} onClick={() => onToggle(item)} />
+
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 7,
+            }}
+          >
+            <span
+              aria-label={PRIORITY_META[item.priority].label}
+              title={PRIORITY_META[item.priority].label}
+              style={{
+                width: 6,
+                height: 6,
+                borderRadius: 999,
+                background: PRIORITY_META[item.priority].color,
+                flexShrink: 0,
+              }}
+            />
+            <span
+              style={{
+                fontSize: 14,
+                color: item.checked ? C.mutedSoft : C.ink,
+                textDecoration: item.checked ? "line-through" : "none",
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+              }}
+            >
+              {item.name}
+            </span>
+          </div>
+          <div style={{ fontSize: 11.5, color: C.mutedSoft, marginTop: 2, marginLeft: 13 }}>
+            {item.room}
+          </div>
+        </div>
+
+        <button
+          onClick={() => onToggleMenu(menuOpen ? null : item.id)}
+          aria-label="item actions"
           style={{
-            position: "absolute",
-            right: 12,
-            top: "calc(100% - 6px)",
-            background: C.surface,
-            border: `1px solid ${C.border}`,
-            borderRadius: 10,
-            boxShadow: "0 8px 24px rgba(20,24,20,0.12)",
-            overflow: "hidden",
-            zIndex: 30,
-            minWidth: 128,
+            background: "transparent",
+            border: "none",
+            color: C.mutedSoft,
+            cursor: "pointer",
+            padding: 6,
+            borderRadius: 6,
+            display: "flex",
           }}
         >
-          <button
-            onClick={() => {
-              onEdit(item);
-              onToggleMenu(null);
+          <MoreVertical size={16} />
+        </button>
+
+        {menuOpen && (
+          <div
+            ref={menuRef}
+            style={{
+              position: "absolute",
+              right: 12,
+              top: "calc(100% - 6px)",
+              background: C.surface,
+              border: `1px solid ${C.border}`,
+              borderRadius: 10,
+              boxShadow: "0 8px 24px rgba(20,24,20,0.12)",
+              overflow: "hidden",
+              zIndex: 30,
+              minWidth: 128,
             }}
-            style={menuItemStyle}
           >
-            <Pencil size={13} strokeWidth={1.8} />
-            Edit
-          </button>
-          <button
-            onClick={() => {
-              onDelete(item.id);
-              onToggleMenu(null);
-            }}
-            style={{ ...menuItemStyle, color: C.danger }}
-          >
-            <Trash2 size={13} strokeWidth={1.8} />
-            Delete
-          </button>
-        </div>
-      )}
+            <button
+              onClick={() => {
+                onEdit(item);
+                onToggleMenu(null);
+              }}
+              style={menuItemStyle}
+            >
+              <Pencil size={13} strokeWidth={1.8} />
+              Edit
+            </button>
+            <button
+              onClick={() => {
+                onDelete(item.id);
+                onToggleMenu(null);
+              }}
+              style={{ ...menuItemStyle, color: C.danger }}
+            >
+              <Trash2 size={13} strokeWidth={1.8} />
+              Delete
+            </button>
+          </div>
+        )}
+
+        {swipeOpen && (
+          <div
+            onClick={() => onSwipeOpenChange(null)}
+            style={{ position: "absolute", inset: 0, zIndex: 20 }}
+          />
+        )}
+      </div>
     </div>
   );
 }
@@ -471,6 +559,7 @@ export default function HomeOrganizer() {
   const [activeTab, setActiveTab] = useState("All");
   const [search, setSearch] = useState("");
   const [menuOpenId, setMenuOpenId] = useState(null);
+  const [swipeOpenId, setSwipeOpenId] = useState(null);
   const [modal, setModal] = useState(null); // null | "add" | itemObject
 
   useEffect(() => {
@@ -499,6 +588,19 @@ export default function HomeOrganizer() {
     } catch {
       setItems((cur) => cur.map((i) => (i.id === item.id ? { ...i, checked: !next } : i)));
       setError("Couldn't save that change — please try again.");
+    }
+  };
+
+  const setPriority = async (item, priority) => {
+    setSwipeOpenId(null);
+    if (item.priority === priority) return;
+    const prev = items;
+    setItems((cur) => cur.map((i) => (i.id === item.id ? { ...i, priority } : i)));
+    try {
+      await updateItem(item.id, { priority });
+    } catch {
+      setItems(prev);
+      setError("Couldn't update priority — please try again.");
     }
   };
 
@@ -563,28 +665,15 @@ export default function HomeOrganizer() {
         boxShadow: "0 1px 3px rgba(20,24,20,0.06)",
       }}
     >
-      {/* header */}
+      {/* top bar */}
       <div
         style={{
           background: C.surface,
           borderBottom: `1px solid ${C.border}`,
-          padding: "20px 20px 0",
+          padding: "16px 20px 0",
           flexShrink: 0,
         }}
       >
-        <div>
-          <div style={{ fontSize: 17, fontWeight: 600, letterSpacing: "-0.01em" }}>
-            Home organizer
-          </div>
-          <div style={{ fontSize: 12.5, color: C.muted, marginTop: 3 }}>
-            {total === 0 ? "No items yet" : `${done} of ${total} items ready`}
-          </div>
-        </div>
-
-        <div style={{ margin: "14px 0 12px" }}>
-          <ProgressBar value={done} total={total} />
-        </div>
-
         <div
           style={{
             position: "relative",
@@ -741,7 +830,13 @@ export default function HomeOrganizer() {
       )}
 
       {/* list */}
-      <div style={{ flex: 1, overflowY: "auto", paddingBottom: 76 }} onScroll={() => setMenuOpenId(null)}>
+      <div
+        style={{ flex: 1, overflowY: "auto", paddingBottom: 76 }}
+        onScroll={() => {
+          setMenuOpenId(null);
+          setSwipeOpenId(null);
+        }}
+      >
         {loading ? (
           <div
             style={{
@@ -809,10 +904,19 @@ export default function HomeOrganizer() {
                     key={item.id}
                     item={item}
                     menuOpen={menuOpenId === item.id}
-                    onToggleMenu={setMenuOpenId}
+                    onToggleMenu={(id) => {
+                      setMenuOpenId(id);
+                      setSwipeOpenId(null);
+                    }}
                     onToggle={toggle}
                     onEdit={(it) => setModal(it)}
                     onDelete={remove}
+                    swipeOpen={swipeOpenId === item.id}
+                    onSwipeOpenChange={(id) => {
+                      setSwipeOpenId(id);
+                      if (id) setMenuOpenId(null);
+                    }}
+                    onSetPriority={setPriority}
                   />
                 ))}
               </div>
