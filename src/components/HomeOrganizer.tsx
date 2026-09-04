@@ -33,26 +33,60 @@ const PRIORITY_META = {
 };
 
 // ---------------------------------------------------------------------------
-// persistence — uses Claude's artifact storage API so items survive reloads
+// persistence — Supabase (Playhub project), table: home_organizer_items
+// columns: id uuid pk default gen_random_uuid(), name text, room text,
+//          priority text check (High/Medium/Low), checked bool default false,
+//          created_at timestamptz default now()
+// anon key has public read/insert/update/delete policies on this table.
 // ---------------------------------------------------------------------------
-const STORAGE_KEY = "home_organizer_items";
+const SUPABASE_URL = "https://wkfzhcszhgewkvwukzes.supabase.co";
+const SUPABASE_ANON_KEY =
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndrZnpoY3N6aGdld2t2d3VremVzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mzg3MDE1NzksImV4cCI6MjA1NDI3NzU3OX0.TzSh8M9NOTnsmVaNxquif4xzSxWaVZp9sePHcjrgCVI";
+const TABLE = "home_organizer_items";
 
-async function loadItems() {
-  try {
-    const result = await window.storage.get(STORAGE_KEY, false);
-    return result ? JSON.parse(result.value) : [];
-  } catch {
-    return [];
-  }
+const sbHeaders = {
+  apikey: SUPABASE_ANON_KEY,
+  Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+  "Content-Type": "application/json",
+};
+
+async function fetchItems() {
+  const res = await fetch(
+    `${SUPABASE_URL}/rest/v1/${TABLE}?select=*&order=created_at.asc`,
+    { headers: sbHeaders }
+  );
+  if (!res.ok) throw new Error(`Failed to load items (${res.status})`);
+  return res.json();
 }
 
-async function saveItems(items) {
-  try {
-    await window.storage.set(STORAGE_KEY, JSON.stringify(items), false);
-    return true;
-  } catch {
-    return false;
-  }
+async function insertItem(data) {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/${TABLE}`, {
+    method: "POST",
+    headers: { ...sbHeaders, Prefer: "return=representation" },
+    body: JSON.stringify([data]),
+  });
+  if (!res.ok) throw new Error(`Failed to add item (${res.status})`);
+  const rows = await res.json();
+  return rows[0];
+}
+
+async function updateItem(id, patch) {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/${TABLE}?id=eq.${id}`, {
+    method: "PATCH",
+    headers: { ...sbHeaders, Prefer: "return=representation" },
+    body: JSON.stringify(patch),
+  });
+  if (!res.ok) throw new Error(`Failed to update item (${res.status})`);
+  const rows = await res.json();
+  return rows[0];
+}
+
+async function deleteItem(id) {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/${TABLE}?id=eq.${id}`, {
+    method: "DELETE",
+    headers: sbHeaders,
+  });
+  if (!res.ok) throw new Error(`Failed to delete item (${res.status})`);
 }
 
 // ---------------------------------------------------------------------------
@@ -126,7 +160,7 @@ function Row({ item, menuOpen, onToggleMenu, onToggle, onEdit, onDelete }) {
         background: C.surface,
       }}
     >
-      <Checkbox checked={item.checked} onClick={() => onToggle(item.id)} />
+      <Checkbox checked={item.checked} onClick={() => onToggle(item)} />
 
       <div style={{ flex: 1, minWidth: 0 }}>
         <div
@@ -629,10 +663,13 @@ export default function HomeOrganizer() {
     let cancelled = false;
     (async () => {
       setLoading(true);
-      const stored = await loadItems();
-      if (!cancelled) {
-        setItems(stored);
-        setLoading(false);
+      try {
+        const rows = await fetchItems();
+        if (!cancelled) setItems(rows);
+      } catch (e) {
+        if (!cancelled) setError("Couldn't load items from the database.");
+      } finally {
+        if (!cancelled) setLoading(false);
       }
     })();
     return () => {
@@ -640,38 +677,47 @@ export default function HomeOrganizer() {
     };
   }, []);
 
-  const persist = async (next) => {
-    const ok = await saveItems(next);
-    if (!ok) setError("Couldn't save your changes — they may not persist after you leave.");
+  const toggle = async (item) => {
+    const next = !item.checked;
+    setItems((cur) => cur.map((i) => (i.id === item.id ? { ...i, checked: next } : i)));
+    try {
+      await updateItem(item.id, { checked: next });
+    } catch {
+      setItems((cur) => cur.map((i) => (i.id === item.id ? { ...i, checked: !next } : i)));
+      setError("Couldn't save that change — please try again.");
+    }
   };
 
-  const toggle = (id) => {
-    const next = items.map((i) => (i.id === id ? { ...i, checked: !i.checked } : i));
-    setItems(next);
-    persist(next);
+  const remove = async (id) => {
+    const prev = items;
+    setItems((cur) => cur.filter((i) => i.id !== id));
+    try {
+      await deleteItem(id);
+    } catch {
+      setItems(prev);
+      setError("Couldn't delete that item — please try again.");
+    }
   };
 
-  const remove = (id) => {
-    const next = items.filter((i) => i.id !== id);
-    setItems(next);
-    persist(next);
-  };
-
-  const upsert = (data) => {
+  const upsert = async (data) => {
     const editing = modal && modal !== "add";
     setModal(null);
     if (editing) {
-      const next = items.map((i) => (i.id === modal.id ? { ...i, ...data } : i));
-      setItems(next);
-      persist(next);
+      const prev = items;
+      setItems((cur) => cur.map((i) => (i.id === modal.id ? { ...i, ...data } : i)));
+      try {
+        await updateItem(modal.id, data);
+      } catch {
+        setItems(prev);
+        setError("Couldn't save changes — please try again.");
+      }
     } else {
-      const id =
-        typeof crypto !== "undefined" && crypto.randomUUID
-          ? crypto.randomUUID()
-          : `item-${Date.now()}`;
-      const next = [...items, { id, checked: false, ...data }];
-      setItems(next);
-      persist(next);
+      try {
+        const created = await insertItem({ ...data, checked: false });
+        setItems((cur) => [...cur, created]);
+      } catch {
+        setError("Couldn't add that item — please try again.");
+      }
     }
   };
 
