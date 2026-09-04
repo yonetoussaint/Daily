@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import { Plus, Check, Pencil, Trash2, X, MoreVertical, ListChecks } from "lucide-react";
+import { Plus, Check, Pencil, Trash2, X, MoreVertical, ListChecks, Search } from "lucide-react";
 
 // ---------------------------------------------------------------------------
 // design tokens
@@ -33,106 +33,25 @@ const PRIORITY_META = {
 };
 
 // ---------------------------------------------------------------------------
-// Supabase (persistence)
+// persistence — uses Claude's artifact storage API so items survive reloads
 // ---------------------------------------------------------------------------
-const SUPABASE_URL = "https://wkfzhcszhgewkvwukzes.supabase.co";
-const SUPABASE_ANON_KEY =
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndrZnpoY3N6aGdld2t2d3VremVzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mzg3MDE1NzksImV4cCI6MjA1NDI3NzU3OX0.TzSh8M9NOTnsmVaNxquif4xzSxWaVZp9sePHcjrgCVI";
-const TABLE = "home_organizer_items";
-const REST_URL = `${SUPABASE_URL}/rest/v1/${TABLE}`;
-const SB_HEADERS = {
-  apikey: SUPABASE_ANON_KEY,
-  Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-  "Content-Type": "application/json",
-};
+const STORAGE_KEY = "home_organizer_items";
 
-async function sbList() {
-  const res = await fetch(`${REST_URL}?select=*&order=created_at.asc`, {
-    headers: SB_HEADERS,
-  });
-  if (!res.ok) throw new Error(`Failed to load items (${res.status})`);
-  return res.json();
-}
-
-async function sbInsert(item) {
-  const res = await fetch(REST_URL, {
-    method: "POST",
-    headers: { ...SB_HEADERS, Prefer: "return=representation" },
-    body: JSON.stringify(item),
-  });
-  if (!res.ok) throw new Error(`Failed to add item (${res.status})`);
-  const rows = await res.json();
-  return rows[0];
-}
-
-async function sbUpdate(id, patch) {
-  const res = await fetch(`${REST_URL}?id=eq.${id}`, {
-    method: "PATCH",
-    headers: { ...SB_HEADERS, Prefer: "return=representation" },
-    body: JSON.stringify(patch),
-  });
-  if (!res.ok) throw new Error(`Failed to update item (${res.status})`);
-  const rows = await res.json();
-  return rows[0];
-}
-
-async function sbDelete(id) {
-  const res = await fetch(`${REST_URL}?id=eq.${id}`, {
-    method: "DELETE",
-    headers: SB_HEADERS,
-  });
-  if (!res.ok) throw new Error(`Failed to delete item (${res.status})`);
-}
-
-// ---------------------------------------------------------------------------
-// Local fallback cache (used when Supabase is unreachable)
-// Uses Claude's artifact storage API when running inside Claude.ai (where
-// browser localStorage is unavailable), and falls back to real localStorage
-// when this file is run in a normal browser (e.g. copied out of Claude.ai).
-// ---------------------------------------------------------------------------
-const LOCAL_CACHE_KEY = "home_organizer_items_cache";
-
-const hasArtifactStorage = typeof window !== "undefined" && !!window.storage;
-
-const hasLocalStorage = (() => {
+async function loadItems() {
   try {
-    if (typeof window === "undefined" || !window.localStorage) return false;
-    const testKey = "__home_organizer_ls_test__";
-    window.localStorage.setItem(testKey, "1");
-    window.localStorage.removeItem(testKey);
+    const result = await window.storage.get(STORAGE_KEY, false);
+    return result ? JSON.parse(result.value) : [];
+  } catch {
+    return [];
+  }
+}
+
+async function saveItems(items) {
+  try {
+    await window.storage.set(STORAGE_KEY, JSON.stringify(items), false);
     return true;
   } catch {
     return false;
-  }
-})();
-
-async function localLoad() {
-  try {
-    if (hasArtifactStorage) {
-      const result = await window.storage.get(LOCAL_CACHE_KEY, false);
-      return result ? JSON.parse(result.value) : null;
-    }
-    if (hasLocalStorage) {
-      const raw = window.localStorage.getItem(LOCAL_CACHE_KEY);
-      return raw ? JSON.parse(raw) : null;
-    }
-    return null;
-  } catch {
-    return null;
-  }
-}
-
-async function localSave(items) {
-  try {
-    if (hasArtifactStorage) {
-      await window.storage.set(LOCAL_CACHE_KEY, JSON.stringify(items), false);
-      return;
-    }
-    if (hasLocalStorage) {
-      window.localStorage.setItem(LOCAL_CACHE_KEY, JSON.stringify(items));
-    }
-  } catch {
-    // best-effort cache; ignore failures
   }
 }
 
@@ -515,34 +434,19 @@ export default function HomeOrganizer() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [offline, setOffline] = useState(false);
   const [activeTab, setActiveTab] = useState("All");
+  const [search, setSearch] = useState("");
   const [menuOpenId, setMenuOpenId] = useState(null);
   const [modal, setModal] = useState(null); // null | "add" | itemObject
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      try {
-        setLoading(true);
-        const rows = await sbList();
-        if (cancelled) return;
-        setItems(rows);
-        setOffline(false);
-        setError(null);
-        localSave(rows);
-      } catch (e) {
-        if (cancelled) return;
-        const cached = await localLoad();
-        if (cached) {
-          setItems(cached);
-          setOffline(true);
-          setError("Can't reach the server — showing your last saved data locally.");
-        } else {
-          setError(e.message || "Failed to load items");
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
+      setLoading(true);
+      const stored = await loadItems();
+      if (!cancelled) {
+        setItems(stored);
+        setLoading(false);
       }
     })();
     return () => {
@@ -550,78 +454,49 @@ export default function HomeOrganizer() {
     };
   }, []);
 
-  const toggle = async (id) => {
-    const current = items.find((i) => i.id === id);
-    if (!current) return;
-    const nextChecked = !current.checked;
-    const next = items.map((i) => (i.id === id ? { ...i, checked: nextChecked } : i));
-    setItems(next);
-    try {
-      await sbUpdate(id, { checked: nextChecked });
-      setOffline(false);
-      localSave(next);
-    } catch (e) {
-      setOffline(true);
-      setError("Can't reach the server — change saved locally, will not sync yet.");
-      localSave(next);
-    }
+  const persist = async (next) => {
+    const ok = await saveItems(next);
+    if (!ok) setError("Couldn't save your changes — they may not persist after you leave.");
   };
 
-  const remove = async (id) => {
+  const toggle = (id) => {
+    const next = items.map((i) => (i.id === id ? { ...i, checked: !i.checked } : i));
+    setItems(next);
+    persist(next);
+  };
+
+  const remove = (id) => {
     const next = items.filter((i) => i.id !== id);
     setItems(next);
-    try {
-      await sbDelete(id);
-      setOffline(false);
-      localSave(next);
-    } catch (e) {
-      setOffline(true);
-      setError("Can't reach the server — deletion saved locally, will not sync yet.");
-      localSave(next);
-    }
+    persist(next);
   };
 
-  const upsert = async (data) => {
+  const upsert = (data) => {
     const editing = modal && modal !== "add";
     setModal(null);
     if (editing) {
       const next = items.map((i) => (i.id === modal.id ? { ...i, ...data } : i));
       setItems(next);
-      try {
-        await sbUpdate(modal.id, data);
-        setOffline(false);
-        localSave(next);
-      } catch (e) {
-        setOffline(true);
-        setError("Can't reach the server — changes saved locally, will not sync yet.");
-        localSave(next);
-      }
+      persist(next);
     } else {
-      const tempId =
+      const id =
         typeof crypto !== "undefined" && crypto.randomUUID
           ? crypto.randomUUID()
-          : `local-${Date.now()}`;
-      const newItem = { id: tempId, checked: false, ...data };
-      const withNew = [...items, newItem];
-      setItems(withNew);
-      try {
-        const created = await sbInsert({ checked: false, ...data });
-        const synced = items.concat(created);
-        setItems(synced);
-        setOffline(false);
-        localSave(synced);
-      } catch (e) {
-        setOffline(true);
-        setError("Can't reach the server — new item saved locally, will not sync yet.");
-        localSave(withNew);
-      }
+          : `item-${Date.now()}`;
+      const next = [...items, { id, checked: false, ...data }];
+      setItems(next);
+      persist(next);
     }
   };
 
   const total = items.length;
   const done = items.filter((i) => i.checked).length;
 
-  const visibleItems = activeTab === "All" ? items : items.filter((i) => i.room === activeTab);
+  const roomFiltered = activeTab === "All" ? items : items.filter((i) => i.room === activeTab);
+  const query = search.trim().toLowerCase();
+  const visibleItems = query
+    ? roomFiltered.filter((i) => i.name.toLowerCase().includes(query))
+    : roomFiltered;
 
   return (
     <div
@@ -631,7 +506,7 @@ export default function HomeOrganizer() {
         color: C.ink,
         width: "100%",
         maxWidth: 440,
-        height: 660,
+        height: "100vh",
         margin: "0 auto",
         position: "relative",
         display: "flex",
@@ -651,72 +526,143 @@ export default function HomeOrganizer() {
           flexShrink: 0,
         }}
       >
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-          <div>
-            <div style={{ fontSize: 17, fontWeight: 600, letterSpacing: "-0.01em" }}>
-              Home organizer
-            </div>
-            <div style={{ fontSize: 12.5, color: C.muted, marginTop: 3 }}>
-              {total === 0 ? "No items yet" : `${done} of ${total} items ready`}
-            </div>
+        <div>
+          <div style={{ fontSize: 17, fontWeight: 600, letterSpacing: "-0.01em" }}>
+            Home organizer
           </div>
-          <button
-            onClick={() => setModal("add")}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 6,
-              fontFamily: FONT,
-              fontSize: 13,
-              fontWeight: 600,
-              color: "#fff",
-              background: C.accent,
-              border: "none",
-              borderRadius: 8,
-              padding: "8px 12px",
-              cursor: "pointer",
-              flexShrink: 0,
-            }}
-          >
-            <Plus size={14} strokeWidth={2.5} />
-            Add item
-          </button>
+          <div style={{ fontSize: 12.5, color: C.muted, marginTop: 3 }}>
+            {total === 0 ? "No items yet" : `${done} of ${total} items ready`}
+          </div>
         </div>
 
-        <div style={{ margin: "14px 0 16px" }}>
+        <div style={{ margin: "14px 0 12px" }}>
           <ProgressBar value={done} total={total} />
         </div>
 
         <div
           style={{
+            position: "relative",
+            marginBottom: 12,
+          }}
+        >
+          <Search
+            size={15}
+            strokeWidth={2}
+            color={C.mutedSoft}
+            style={{
+              position: "absolute",
+              left: 11,
+              top: "50%",
+              transform: "translateY(-50%)",
+              pointerEvents: "none",
+            }}
+          />
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search items"
+            style={{
+              width: "100%",
+              fontFamily: FONT,
+              fontSize: 13.5,
+              color: C.ink,
+              background: C.surfaceAlt,
+              border: `1px solid ${C.border}`,
+              borderRadius: 9,
+              padding: search ? "8px 32px 8px 32px" : "8px 12px 8px 32px",
+              outline: "none",
+              boxSizing: "border-box",
+            }}
+          />
+          {search && (
+            <button
+              onClick={() => setSearch("")}
+              aria-label="Clear search"
+              style={{
+                position: "absolute",
+                right: 8,
+                top: "50%",
+                transform: "translateY(-50%)",
+                background: "none",
+                border: "none",
+                color: C.mutedSoft,
+                cursor: "pointer",
+                padding: 3,
+                display: "flex",
+              }}
+            >
+              <X size={13} />
+            </button>
+          )}
+        </div>
+
+        <div
+          style={{
             display: "flex",
-            gap: 6,
+            gap: 8,
             overflowX: "auto",
             paddingBottom: 14,
+            paddingLeft: 20,
+            paddingRight: 20,
+            marginLeft: -20,
+            marginRight: -20,
             scrollbarWidth: "none",
           }}
         >
           {["All", ...ROOMS].map((tab) => {
             const isActive = tab === activeTab;
+            const tabItems = tab === "All" ? items : items.filter((i) => i.room === tab);
+            const tabTotal = tabItems.length;
+            const tabDone = tabItems.filter((i) => i.checked).length;
             return (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
                 style={{
                   flexShrink: 0,
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 6,
                   fontFamily: FONT,
-                  fontSize: 13,
-                  fontWeight: isActive ? 600 : 500,
-                  padding: "6px 13px",
-                  borderRadius: 999,
+                  textAlign: "left",
+                  minWidth: 84,
+                  padding: "8px 12px",
+                  borderRadius: 12,
                   border: `1px solid ${isActive ? C.accent : C.border}`,
-                  background: isActive ? C.accentTint : "transparent",
-                  color: isActive ? C.accent : C.muted,
+                  background: isActive ? C.accentTint : C.surfaceAlt,
                   cursor: "pointer",
-                  whiteSpace: "nowrap",
                 }}
               >
-                {tab}
+                <span
+                  style={{
+                    fontSize: 12.5,
+                    fontWeight: isActive ? 600 : 500,
+                    color: isActive ? C.accent : C.ink,
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {tab}
+                </span>
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <div style={{ flex: 1, minWidth: 28 }}>
+                    <ProgressBar
+                      value={tabDone}
+                      total={tabTotal}
+                      height={4}
+                      tint={isActive ? "#D3E4DA" : C.border}
+                      fill={isActive ? C.accent : C.mutedSoft}
+                    />
+                  </div>
+                  <span
+                    style={{
+                      fontSize: 10.5,
+                      color: isActive ? C.accent : C.mutedSoft,
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {tabDone}/{tabTotal}
+                  </span>
+                </div>
               </button>
             );
           })}
@@ -731,8 +677,8 @@ export default function HomeOrganizer() {
             justifyContent: "space-between",
             gap: 10,
             padding: "9px 18px",
-            background: offline ? "#FBF3DD" : C.dangerTint,
-            color: offline ? "#8A6A1F" : C.danger,
+            background: C.dangerTint,
+            color: C.danger,
             fontSize: 12.5,
             flexShrink: 0,
           }}
@@ -749,7 +695,7 @@ export default function HomeOrganizer() {
       )}
 
       {/* list */}
-      <div style={{ flex: 1, overflowY: "auto" }} onScroll={() => setMenuOpenId(null)}>
+      <div style={{ flex: 1, overflowY: "auto", paddingBottom: 76 }} onScroll={() => setMenuOpenId(null)}>
         {loading ? (
           <div
             style={{
@@ -766,7 +712,13 @@ export default function HomeOrganizer() {
         ) : total === 0 ? (
           <EmptyState />
         ) : visibleItems.length === 0 ? (
-          <EmptyState message="Nothing in this room yet." />
+          <EmptyState
+            message={
+              query
+                ? `No items match "${search.trim()}".`
+                : "Nothing in this room yet."
+            }
+          />
         ) : (
           PRIORITIES.map((priority) => {
             const rows = visibleItems.filter((i) => i.priority === priority);
@@ -822,6 +774,35 @@ export default function HomeOrganizer() {
           })
         )}
       </div>
+
+      {/* floating add button */}
+      <button
+        onClick={() => setModal("add")}
+        aria-label="Add item"
+        style={{
+          position: "absolute",
+          right: 20,
+          bottom: 20,
+          width: 52,
+          height: 52,
+          borderRadius: "50%",
+          border: "none",
+          background: C.accent,
+          color: "#fff",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          cursor: "pointer",
+          boxShadow: "0 10px 24px rgba(47,111,82,0.38), 0 2px 6px rgba(20,24,20,0.14)",
+          zIndex: 20,
+          transition: "transform 120ms ease, box-shadow 120ms ease",
+        }}
+        onMouseDown={(e) => (e.currentTarget.style.transform = "scale(0.94)")}
+        onMouseUp={(e) => (e.currentTarget.style.transform = "scale(1)")}
+        onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1)")}
+      >
+        <Plus size={22} strokeWidth={2.5} />
+      </button>
 
       {modal && (
         <ItemModal
