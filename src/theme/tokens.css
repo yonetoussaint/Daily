@@ -1,0 +1,70 @@
+/* Material 3 Expressive — tokens. Seed: green (#2F6F52). */
+:root {
+  color-scheme: light dark;
+  --md-primary: #1f6c4a; --md-on-primary: #fff;
+  --md-primary-container: #a8f2c9; --md-on-primary-container: #002113;
+  --md-secondary-container: #d0e8d6; --md-on-secondary-container: #0b1f14;
+  --md-tertiary-container: #ffdea6; --md-on-tertiary-container: #261900;
+  --md-error: #ba1a1a; --md-on-error: #fff;
+  --md-error-container: #ffdad6; --md-on-error-container: #410002;
+  --md-surface: #f5fbf5;
+  --md-surface-container-low: #eff5ef; --md-surface-container: #e9efe9;
+  --md-surface-container-high: #e3eae4; --md-surface-container-highest: #dde4de;
+  --md-on-surface: #171d19; --md-on-surface-variant: #404943;
+  --md-outline: #707972; --md-outline-variant: #bfc9c1; --md-scrim: rgb(0 0 0 / .32);
+  --md-amber: #8a5d00;
+
+  /* shape scale (expressive adds xl / xxl) */
+  --shape-xs: 4px; --shape-sm: 8px; --shape-md: 12px; --shape-lg: 16px;
+  --shape-xl: 28px; --shape-xxl: 40px; --shape-full: 999px;
+
+  /* motion: springs for spatial changes, ease for effects */
+  --spring-fast: 300ms cubic-bezier(.34, 1.56, .64, 1);
+  --spring-default: 500ms cubic-bezier(.34, 1.3, .64, 1);
+  --effects: 180ms cubic-bezier(.2, 0, 0, 1);
+
+  --elev-2: 0 1px 2px rgb(0 0 0 / .3), 0 2px 6px 2px rgb(0 0 0 / .15);
+  --elev-3: 0 1px 3px rgb(0 0 0 / .3), 0 4px 8px 3px rgb(0 0 0 / .15);
+
+  --font: "Roboto Flex", "Roboto", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --md-primary: #8dd5ae; --md-on-primary: #003824;
+    --md-primary-container: #005236; --md-on-primary-container: #a8f2c9;
+    --md-secondary-container: #364b3d; --md-on-secondary-container: #d0e8d6;
+    --md-tertiary-container: #5d4200; --md-on-tertiary-container: #ffdea6;
+    --md-error: #ffb4ab; --md-on-error: #690005;
+    --md-error-container: #93000a; --md-on-error-container: #ffdad6;
+    --md-surface: #0f1511;
+    --md-surface-container-low: #171d19; --md-surface-container: #1b211d;
+    --md-surface-container-high: #262b27; --md-surface-container-highest: #303632;
+    --md-on-surface: #dde4de; --md-on-surface-variant: #bfc9c1;
+    --md-outline: #8a938c; --md-outline-variant: #404943; --md-scrim: rgb(0 0 0 / .5);
+    --md-amber: #f5bf48;
+  }
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html, body, #root { height: 100%; }
+body {
+  margin: 0; background: var(--md-surface); color: var(--md-on-surface);
+  font: 400 16px/1.5 var(--font); -webkit-font-smoothing: antialiased;
+}
+button, input { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 3px solid var(--md-primary); outline-offset: 2px; }
+
+/* type scale */
+.headline-lg { font: 700 32px/1.15 var(--font); font-variation-settings: "wdth" 110; letter-spacing: -.01em; }
+.title-md { font: 600 16px/1.4 var(--font); letter-spacing: .01em; }
+.body-lg { font-size: 16px; }
+.body-md { font-size: 14px; }
+.label-lg { font: 600 14px/1.3 var(--font); letter-spacing: .01em; }
+.label-md { font: 500 12px/1.3 var(--font); letter-spacing: .03em; }
+.muted { color: var(--md-on-surface-variant); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition-duration: 1ms !important; animation-duration: 1ms !important; }
+}
