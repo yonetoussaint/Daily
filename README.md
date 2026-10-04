@@ -10,14 +10,15 @@ Set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` in `.env` to override the d
 
 ## Screens
 
-Daily is a single-page app: no URL routes, navigation is in-app state (`src/app/NavProvider.jsx`), and the last view is remembered across reloads.
+Daily is a single-page app on one URL. The home screen is a launcher with one tile per app. Navigation lives in `src/app/NavProvider.jsx` and uses `history.state`, so the system / browser back button steps back (doc → library → home) and a reload restores the current view.
 
 | View | What it is |
 | --- | --- |
-| Home → Tasks | **Home tasks** — progress hero, search, Open/Done filter, room chips, tasks grouped by priority |
-| Home → Rooms | **Rooms** — one expressive card per room with progress; tap to jump into that room's tasks |
-| Docs → Library | **Docs library** — search, type filter, swipe a doc to edit or delete it (with Undo) |
-| Docs → Editor | **Editor** — outline of chapters and sections, read / edit modes, rich-text toolbar |
+| Home | **Launcher** — a tile for every app; the drawer lists the same apps |
+| Home tasks → Tasks | progress hero, search, Open/Done filter, room chips, tasks grouped by priority |
+| Home tasks → Rooms | one expressive card per room with progress; tap to jump into that room's tasks |
+| Docs → Library | search, type filter, swipe a doc to edit or delete it (with Undo) |
+| Docs → Editor | outline of chapters and sections, read / edit modes, rich-text toolbar |
 
 ## Structure
 
@@ -25,8 +26,8 @@ Daily is a single-page app: no URL routes, navigation is in-app state (`src/app/
 src/
 ├── main.jsx                  entry point
 ├── app/                      app shell: navigation state, drawer, top bar, FAB, theme toggle
-│   ├── App.jsx · NavProvider.jsx · AppShell.jsx · AppShell.css · useTheme.js
-│   ├── apps.jsx                  registry of the apps in the drawer — add new apps here + a case in App.jsx
+│   ├── App.jsx · NavProvider.jsx · Launcher.jsx · AppShell.jsx · AppShell.css · useTheme.js
+│   ├── apps.jsx                  registry of the apps in the drawer — add new apps here + a case in App.jsx (the launcher picks them up)
 │   └── AppDrawer.jsx · DrawerProvider.jsx   hamburger navigation drawer
 ├── design/                   the design system — no app logic in here
 │   ├── tokens.css            colour roles (OKLCH + light-dark()), shape scale, motion springs, elevation

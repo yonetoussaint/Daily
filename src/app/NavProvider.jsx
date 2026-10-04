@@ -1,34 +1,56 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
-
-const KEY = "daily-view";
-const DEFAULT = { app: "home", tab: "tasks", bookId: null };
-
-const NavContext = createContext({ ...DEFAULT });
-export const useNav = () => useContext(NavContext);
-
-function load() {
-  try {
-    return { ...DEFAULT, ...JSON.parse(localStorage.getItem(KEY)) };
-  } catch {
-    return DEFAULT;
-  }
-}
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 
 /**
- * In-app navigation (no URLs): which app is open, which tab inside Home, which doc inside Docs.
- * The last view is remembered so a reload lands where you left off.
+ * In-app navigation on a single URL. The view is kept in `history.state`, so the system / browser
+ * back button steps back through it (doc → library → home) instead of leaving the app, and a reload
+ * restores the same view.
+ *
+ *   depth 0  launcher (home)
+ *   depth 1  an app (tasks, docs)
+ *   depth 2  a doc inside Docs
  */
+const ROOT = { app: "launcher", tab: "tasks", bookId: null, depth: 0 };
+const read = () => {
+  const s = window.history.state;
+  return s && typeof s.app === "string" ? { ...ROOT, ...s } : ROOT;
+};
+
+const NavContext = createContext({ ...ROOT });
+export const useNav = () => useContext(NavContext);
+
 export default function NavProvider({ children }) {
-  const [view, setView] = useState(load);
+  const [view, setView] = useState(read);
+  const ref = useRef(view);
 
   useEffect(() => {
-    try { localStorage.setItem(KEY, JSON.stringify(view)); } catch { /* storage unavailable */ }
-  }, [view]);
+    if (!window.history.state?.app) window.history.replaceState(ref.current, "");
+    const onPop = () => { ref.current = read(); setView(ref.current); };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
 
-  const goApp = useCallback((app) => setView((v) => (v.app === app ? v : { ...v, app, bookId: null })), []);
-  const goTab = useCallback((tab) => setView((v) => ({ ...v, app: "home", tab })), []);
-  const openBook = useCallback((bookId) => setView((v) => ({ ...v, app: "docs", bookId })), []);
-  const closeBook = useCallback(() => setView((v) => ({ ...v, bookId: null })), []);
+  const go = useCallback((next, push) => {
+    ref.current = next;
+    setView(next);
+    if (push) window.history.pushState(next, "");
+    else window.history.replaceState(next, "");
+  }, []);
+
+  const goApp = useCallback((app) => {
+    const v = ref.current;
+    if (app === "launcher") { if (v.depth > 0) window.history.go(-v.depth); return; }
+    if (v.app === app && !v.bookId) return;
+    go({ ...v, app, bookId: null, depth: 1 }, v.depth === 0);
+  }, [go]);
+
+  const goTab = useCallback((tab) => go({ ...ref.current, app: "tasks", tab }, false), [go]);
+  const openBook = useCallback((bookId) => go({ ...ref.current, app: "docs", bookId, depth: 2 }, true), [go]);
+  const closeBook = useCallback(() => {
+    const v = ref.current;
+    if (!v.bookId) return;
+    if (v.depth === 2) window.history.back();
+    else go({ ...v, bookId: null }, false);
+  }, [go]);
 
   const value = useMemo(() => ({ ...view, goApp, goTab, openBook, closeBook }), [view, goApp, goTab, openBook, closeBook]);
   return <NavContext.Provider value={value}>{children}</NavContext.Provider>;

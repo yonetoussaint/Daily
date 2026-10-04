@@ -2,11 +2,14 @@ import { SnackbarProvider } from "../design/components";
 import { DocsApp } from "../features/docs";
 import AppShell from "./AppShell";
 import DrawerProvider from "./DrawerProvider";
+import Launcher from "./Launcher";
 import NavProvider, { useNav } from "./NavProvider";
 
 function Current() {
   const { app } = useNav();
-  return app === "docs" ? <DocsApp /> : <AppShell />;
+  if (app === "docs") return <DocsApp />;
+  if (app === "tasks") return <AppShell />;
+  return <Launcher />;
 }
 
 export default function App() {

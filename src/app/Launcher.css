@@ -1,0 +1,21 @@
+/* Launcher (home screen) */
+.launcher { max-width: 760px; margin: 0 auto; padding: 0 16px calc(32px + env(safe-area-inset-bottom)); }
+.launcher-head { padding: 4px 4px 24px; }
+.launcher-head .display { margin-top: 4px; }
+.launcher-head .body-lg { margin-top: 8px; }
+
+.launcher-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+.launcher-tile {
+  display: grid; align-content: space-between; gap: 28px; min-height: 176px; padding: 20px; text-align: left;
+  border: 0; border-radius: var(--shape-xxl); background: var(--acc-c); color: var(--on-acc-c);
+  font: inherit; cursor: pointer; transition: transform var(--spring-fast), border-radius var(--spring-fast);
+}
+.launcher-tile:active { transform: scale(.97); border-radius: var(--shape-xl); }
+.launcher-icon { width: 64px; height: 64px; display: grid; place-items: center; background: var(--acc); color: var(--on-acc); }
+.launcher-text { display: grid; gap: 2px; }
+.launcher-text .body-md { color: inherit; opacity: .8; }
+
+@media (min-width: 840px) {
+  .launcher { padding-top: 24px; }
+  .launcher-grid { grid-template-columns: repeat(3, 1fr); }
+}

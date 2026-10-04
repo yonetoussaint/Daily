@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { APPS } from "./apps";
+import { APPS, HOME } from "./apps";
 import { useNav } from "./NavProvider";
 import "./AppDrawer.css";
 
@@ -34,29 +34,34 @@ export default function AppDrawer({ open, onClose }) {
           <h2 className="headline">Daily</h2>
           <p className="body-md">Organize your life</p>
         </div>
+        <nav className="drawer-list" aria-label="Apps">
+          <DrawerItem item={HOME} active={app === HOME.id} onSelect={select} />
+        </nav>
         <p className="drawer-section label-lg">Apps</p>
         <nav className="drawer-list" aria-label="Apps">
-          {APPS.map(({ id, label, description, icon: Icon, hue }) => {
-            const active = app === id;
-            return (
-              <button
-                key={id}
-                type="button"
-                onClick={() => select(id)}
-                className={`drawer-item state acc ${active ? "is-active" : ""}`}
-                style={{ "--hue": hue }}
-                aria-current={active ? "page" : undefined}
-              >
-                <span className="drawer-icon"><Icon size={22} /></span>
-                <span className="drawer-text">
-                  <span className="title-md">{label}</span>
-                  <span className="body-md">{description}</span>
-                </span>
-              </button>
-            );
-          })}
+          {APPS.map((item) => (
+            <DrawerItem key={item.id} item={item} active={app === item.id} onSelect={select} />
+          ))}
         </nav>
       </aside>
     </div>
+  );
+}
+
+function DrawerItem({ item: { id, label, description, icon: Icon, hue }, active, onSelect }) {
+  return (
+    <button
+      type="button"
+      onClick={() => onSelect(id)}
+      className={`drawer-item state acc ${active ? "is-active" : ""}`}
+      style={{ "--hue": hue }}
+      aria-current={active ? "page" : undefined}
+    >
+      <span className="drawer-icon"><Icon size={22} /></span>
+      <span className="drawer-text">
+        <span className="title-md">{label}</span>
+        <span className="body-md">{description}</span>
+      </span>
+    </button>
   );
 }
