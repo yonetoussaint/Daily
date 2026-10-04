@@ -16,14 +16,14 @@
 }
 .drawer-root.is-open .drawer { transform: none; transition: transform var(--spring-default); }
 
-.drawer-head { padding: 8px 16px 20px; }
+.drawer-head { padding: 8px 16px 20px; overflow-wrap: anywhere; }
 .drawer-head .body-md { color: var(--on-surface-variant); margin-top: 4px; }
 .drawer-section { padding: 8px 16px; color: var(--on-surface-variant); }
 
 .drawer-list { display: grid; gap: 4px; }
 .drawer-item {
   display: flex; align-items: center; gap: 16px; min-height: 64px; padding: 8px 16px 8px 12px;
-  border-radius: var(--shape-full); color: var(--on-surface); background: none; border: 0; width: 100%; text-align: left; font: inherit; cursor: pointer;
+  border-radius: var(--shape-xl); color: var(--on-surface); background: none; border: 0; width: 100%; text-align: left; font: inherit; cursor: pointer;
   transition: background var(--fade), border-radius var(--spring-fast);
 }
 .drawer-item:active { border-radius: var(--shape-lg); }
@@ -32,7 +32,7 @@
   flex: none; width: 40px; height: 40px; display: grid; place-items: center;
   border-radius: var(--shape-full); background: var(--acc-c); color: var(--on-acc-c);
 }
-.drawer-text { display: grid; }
+.drawer-text { display: grid; flex: 1; min-width: 0; overflow-wrap: anywhere; line-height: 1.3; }
 .drawer-text .body-md { color: var(--on-surface-variant); }
 .drawer-item.is-active .drawer-text .body-md { color: inherit; opacity: .8; }
 
