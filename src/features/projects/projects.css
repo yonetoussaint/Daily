@@ -1,0 +1,60 @@
+/* Projects app */
+.proj-fab { position: fixed; z-index: 25; right: 16px; bottom: calc(16px + env(safe-area-inset-bottom)); }
+.proj-page { max-width: var(--content-max); margin: 0 auto; padding: 0 16px 120px; }
+.proj-head { padding: 4px 4px 20px; }
+.proj-head .display { margin-top: 4px; }
+
+/* project list */
+.proj-list, .task-list, .ms-list, .note-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+.proj-card {
+  display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 8px 16px; width: 100%; padding: 20px; text-align: left;
+  border: 0; border-radius: var(--shape-xxl) var(--shape-lg) var(--shape-xxl) var(--shape-lg);
+  background: var(--acc-c); color: var(--on-acc-c); font: inherit; cursor: pointer; transition: transform var(--spring-fast);
+}
+.proj-card:active { transform: scale(.98); }
+.proj-mark { grid-row: span 1; width: 64px; height: 64px; display: grid; place-items: center; background: var(--acc); color: var(--on-acc); font: 800 28px/1 var(--font); }
+.proj-info { display: grid; gap: 2px; }
+.proj-card .wavy, .proj-hero .wavy { grid-column: 1 / -1; margin-top: 12px; color: var(--acc); }
+.proj-stat { grid-column: 1 / -1; display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.stage-pill { justify-self: start; padding: 4px 12px; border-radius: var(--shape-full); background: var(--acc); color: var(--on-acc); }
+
+/* project header */
+.proj-hero { display: grid; gap: 8px; padding: 24px 20px 20px; margin-bottom: 20px; border-radius: var(--shape-xxl); background: var(--acc-c); color: var(--on-acc-c); }
+.proj-hero .display { margin-top: 4px; }
+.hero-next { display: block; opacity: .85; margin-top: 2px; }
+.proj-tabs { margin-bottom: 4px; }
+
+/* tasks */
+.task-group { margin-top: 20px; }
+.task-group h3 { padding: 0 4px 8px; }
+.count { margin-left: 6px; padding: 1px 8px; border-radius: var(--shape-full); background: var(--surface-container-high); }
+.task-list { gap: 4px; }
+.task-row { display: flex; align-items: stretch; gap: 4px; border-radius: var(--shape-lg); background: var(--surface-container-low); }
+.task-check { flex: none; width: 52px; display: grid; place-items: center; border: 0; background: none; color: var(--outline); cursor: pointer; border-radius: var(--shape-lg); }
+.task-check.is-doing { color: var(--acc); }
+.task-check.is-done { color: var(--acc); }
+.task-main { flex: 1; min-width: 0; display: grid; gap: 4px; padding: 14px 16px 14px 0; text-align: left; border: 0; background: none; color: inherit; font: inherit; cursor: pointer; border-radius: var(--shape-lg); }
+.task-main .is-done { text-decoration: line-through; color: var(--on-surface-variant); }
+.task-meta { display: flex; flex-wrap: wrap; gap: 4px 12px; }
+.task-area { display: inline-flex; align-items: center; gap: 4px; color: var(--acc); font-weight: 600; }
+.is-late { color: var(--error); font-weight: 600; }
+
+/* roadmap */
+.ms-card { display: grid; gap: 10px; width: 100%; padding: 18px 20px; text-align: left; border: 0; border-radius: var(--shape-xl); background: var(--surface-container); color: var(--on-surface); font: inherit; cursor: pointer; }
+.ms-card.is-complete { background: var(--primary-container); color: var(--on-primary-container); }
+.ms-top { display: flex; align-items: center; gap: 10px; }
+.ms-date { margin-left: auto; }
+.ms-note { margin-top: 16px; padding: 0 4px; }
+
+/* notes */
+.note-card { display: flex; gap: 14px; width: 100%; padding: 16px; text-align: left; border: 0; border-radius: var(--shape-xl); background: var(--surface-container-low); color: var(--on-surface); font: inherit; cursor: pointer; }
+.note-icon { flex: none; width: 40px; height: 40px; display: grid; place-items: center; border-radius: var(--shape-full); background: var(--acc-c); color: var(--on-acc-c); }
+.note-text { display: grid; gap: 4px; min-width: 0; }
+.note-body { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+
+/* sheets */
+.proj-textarea { height: auto; min-height: 112px; padding-top: 28px; resize: vertical; font: inherit; }
+.swatch { display: block; width: 18px; height: 18px; border-radius: var(--shape-full); background: var(--acc); }
+.btn-danger { color: var(--error); margin-right: auto; }
+
+@media (min-width: 840px) { .proj-page { padding-top: 8px; } }

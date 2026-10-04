@@ -1,4 +1,4 @@
-import { BookOpenText, House, LayoutDashboard } from "lucide-react";
+import { BookOpenText, FolderKanban, House, LayoutDashboard } from "lucide-react";
 
 /** The launcher itself: the home screen that lists every app. */
 export const HOME = { id: "launcher", label: "Home", description: "All your apps", icon: LayoutDashboard, hue: 255 };
@@ -13,4 +13,5 @@ export const HOME = { id: "launcher", label: "Home", description: "All your apps
 export const APPS = [
   { id: "tasks", label: "Home tasks", description: "Chores and rooms", icon: House, hue: 285 },
   { id: "docs", label: "Docs", description: "Writing workspace", icon: BookOpenText, hue: 155 },
+  { id: "projects", label: "Projects", description: "Plan what you’re building", icon: FolderKanban, hue: 25 },
 ];
