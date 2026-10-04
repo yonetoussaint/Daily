@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useMemo, useState } from "react
 
 /**
  * Plain in-memory navigation: no router, no URL changes, no history entries.
- *   app     "launcher" (home) | "tasks" | "docs"
+ *   app     "launcher" (home) | "tasks" | "docs" | "projects" | "values"
  *   tab     the tab open inside Home tasks
  *   bookId  the doc open inside Docs (null = the library)
  *   projectId  the project open inside Projects (null = the list)

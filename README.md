@@ -1,6 +1,6 @@
 # Daily
 
-A home to-do app in **Material 3 Expressive**, plus a writing workspace (Docs) and a project planner (Projects), all in the same design system. Apps are opened from the hamburger drawer. React + Vite, Supabase REST for storage.
+A home to-do app in **Material 3 Expressive**, plus a writing workspace (Docs), a project planner (Projects) and a place for your values and morals (Values), all in the same design system. Apps are opened from the hamburger drawer. React + Vite, Supabase REST for storage.
 
 ```
 npm i && npm run dev
@@ -21,6 +21,9 @@ Daily is a single-page app with no router and no URL routes (so no `_redirects` 
 | Docs → Editor | outline of chapters and sections, read / edit modes, rich-text toolbar |
 | Projects → List | every project with progress and stage; **Mima** (an online marketplace) is the seeded example |
 | Projects → Project | **Tasks** by area (product, tech, marketing, legal, operations, finance), **Roadmap** of milestones with progress, **Notes** for decisions, ideas and research |
+| Values → Values | the things that matter most to you, by area of life, with how often you lived each one |
+| Values → Principles | rules you want to live by (“I listen before I answer”), linked to a value |
+| Values → Journal | days you lived it, fell short, lessons and quotes; a rotating **Today’s reminder** sits on top |
 
 ## Structure
 
@@ -51,6 +54,11 @@ src/
         ├── DocsApp.jsx              picks Library or Editor
         ├── screens/                 LibraryScreen · BookScreen
         └── components/              BookRow · BookSheet · NodeSheet · Outline · formatting (dock + selection pill)
+    ├── values/
+    │   ├── model.js · storage.js    areas, journal types, example data; localStorage persistence
+    │   ├── ValuesProvider.jsx       values, principles, journal (debounced save, undoable delete)
+    │   ├── screens/                 ValuesScreen (reminder + three tabs)
+    │   └── components/              Tabs · EntrySheet
     └── projects/
         ├── model.js · storage.js    areas, statuses, Mima seed data; localStorage persistence
         ├── ProjectsProvider.jsx     all projects (debounced save, undoable delete)

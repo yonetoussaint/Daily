@@ -1,0 +1,36 @@
+/* Values app */
+.vals-fab { position: fixed; z-index: 25; right: 16px; bottom: calc(16px + env(safe-area-inset-bottom)); }
+.vals-page { max-width: var(--content-max); margin: 0 auto; padding: 0 16px 120px; }
+.vals-head { padding: 4px 4px 20px; }
+.vals-head .display { margin-top: 4px; }
+.vals-tabs { margin-bottom: 4px; }
+.vals-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+
+/* today's reminder */
+.vals-today { position: relative; display: grid; gap: 8px; padding: 24px 64px 24px 20px; margin-bottom: 20px; border-radius: var(--shape-xxl) var(--shape-lg) var(--shape-xxl) var(--shape-lg); background: var(--acc-c); color: var(--on-acc-c); }
+.vals-shuffle { position: absolute; top: 12px; right: 12px; }
+
+/* values */
+.val-card { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 8px 16px; width: 100%; padding: 20px; text-align: left; border: 0; border-radius: var(--shape-xxl) var(--shape-lg) var(--shape-xxl) var(--shape-lg); background: var(--acc-c); color: var(--on-acc-c); font: inherit; cursor: pointer; transition: transform var(--spring-fast); }
+.val-card:active { transform: scale(.98); }
+.val-mark { width: 56px; height: 56px; display: grid; place-items: center; background: var(--acc); color: var(--on-acc); }
+.val-text { display: grid; gap: 2px; min-width: 0; }
+.val-meaning { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.val-foot { grid-column: 1 / -1; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 4px 12px; opacity: .85; }
+
+/* principles */
+.pr-card { display: grid; gap: 4px; width: 100%; padding: 16px 20px; text-align: left; border: 0; border-radius: var(--shape-xl); background: var(--surface-container-low); color: var(--on-surface); font: inherit; cursor: pointer; border-inline-start: 6px solid var(--acc); }
+.pr-meta { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 4px; color: var(--on-surface-variant); }
+.pr-cat { display: inline-flex; align-items: center; gap: 4px; color: var(--acc); font-weight: 600; }
+
+/* journal */
+.note-card { display: flex; gap: 14px; width: 100%; padding: 16px; text-align: left; border: 0; border-radius: var(--shape-xl); background: var(--surface-container-low); color: var(--on-surface); font: inherit; cursor: pointer; }
+.note-icon { flex: none; width: 40px; height: 40px; display: grid; place-items: center; border-radius: var(--shape-full); background: var(--acc-c); color: var(--on-acc-c); }
+.note-text { display: grid; gap: 4px; min-width: 0; }
+.note-body { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+
+/* sheet */
+.vals-textarea { height: auto; min-height: 112px; padding-top: 28px; resize: vertical; font: inherit; }
+.btn-danger { color: var(--error); margin-right: auto; }
+
+@media (min-width: 840px) { .vals-page { padding-top: 8px; } }

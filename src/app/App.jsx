@@ -1,6 +1,7 @@
 import { SnackbarProvider } from "../design/components";
 import { DocsApp } from "../features/docs";
 import { ProjectsApp } from "../features/projects";
+import { ValuesApp } from "../features/values";
 import AppShell from "./AppShell";
 import DrawerProvider from "./DrawerProvider";
 import Launcher from "./Launcher";
@@ -10,6 +11,7 @@ function Current() {
   const { app } = useNav();
   if (app === "docs") return <DocsApp />;
   if (app === "projects") return <ProjectsApp />;
+  if (app === "values") return <ValuesApp />;
   if (app === "tasks") return <AppShell />;
   return <Launcher />;
 }
