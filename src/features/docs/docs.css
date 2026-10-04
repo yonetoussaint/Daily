@@ -47,6 +47,7 @@
   display: block; width: 100%; margin: 4px 0 0; padding: 4px 0; border: 0; border-bottom: 2px solid transparent; border-radius: 0; background: transparent; outline: none; color: var(--on-surface);
   font: 800 34px/1.12 var(--font); font-variation-settings: "wdth" 118, "opsz" 64; letter-spacing: -.015em; transition: border-color var(--fade);
 }
+.doc-title, .doc-desc { resize: none; overflow: hidden; font-family: inherit; }
 .doc-title:not([readonly]):focus { border-bottom-color: var(--primary); }
 .doc-desc { display: block; width: 100%; margin-top: 8px; padding: 4px 0; border: 0; background: transparent; outline: none; color: var(--on-surface-variant); }
 .doc-desc::placeholder { color: color-mix(in oklab, var(--on-surface-variant) 60%, transparent); }
@@ -67,7 +68,7 @@
 .prose blockquote { margin: 1.3em 0; padding: 14px 22px; border: 0; border-radius: var(--shape-md) var(--shape-xl) var(--shape-xl) var(--shape-md); background: var(--secondary-container); color: var(--on-secondary-container); }
 .prose blockquote p:last-child { margin-bottom: 0; }
 .prose code { padding: 2px 8px; border-radius: var(--shape-sm); background: var(--surface-container-high); font: 500 .88em/1.4 ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
-.prose pre { margin: 1.2em 0; padding: 16px 20px; border-radius: var(--shape-lg-inc); background: var(--surface-container-highest); overflow-x: auto; font: 500 14px/1.6 ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
+.prose pre { margin: 1.2em 0; padding: 16px 20px; border-radius: var(--shape-lg-inc); background: var(--surface-container-highest); white-space: pre-wrap; overflow-wrap: anywhere; font: 500 14px/1.6 ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
 .prose hr { height: 4px; margin: 2em 0; border: 0; border-radius: 4px; background: var(--outline-variant); }
 .prose font[size="2"] { font-size: .85em; }
 .prose font[size="5"] { font-size: 1.35em; }

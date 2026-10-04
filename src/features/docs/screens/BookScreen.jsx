@@ -20,6 +20,23 @@ export default function BookScreen() {
   return book ? <Editor key={book.id} book={book} /> : null;
 }
 
+/** Single-line-style text field that wraps and grows with its content (Enter doesn't add a line). */
+function AutoText({ value, className, ...rest }) {
+  const ref = useRef(null);
+  const fit = useCallback(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight}px`;
+  }, []);
+  useLayoutEffect(fit, [value, fit]);
+  useEffect(() => {
+    window.addEventListener("resize", fit);
+    return () => window.removeEventListener("resize", fit);
+  }, [fit]);
+  return <textarea ref={ref} rows={1} className={className} value={value} onKeyDown={(e) => e.key === "Enter" && e.preventDefault()} {...rest} />;
+}
+
 function Editor({ book }) {
   const { closeBook } = useNav();
   const snackbar = useSnackbar();
@@ -228,7 +245,7 @@ function Editor({ book }) {
           {chapter ? (
             <article className="doc-page">
               <p className="overline muted">{sub ? `Chapter ${chapterIndex + 1} · Section ${sectionIndex + 1}` : `Chapter ${chapterIndex + 1}`}</p>
-              <input
+              <AutoText
                 className="doc-title"
                 aria-label="Title"
                 value={title}
@@ -236,7 +253,7 @@ function Editor({ book }) {
                 onChange={(e) => setTitle(chapter.id, sub?.id ?? null, e.target.value)}
               />
               {!sub && (editing || chapter.description) && (
-                <input
+                <AutoText
                   className="doc-desc body-lg"
                   aria-label="Short intro"
                   value={chapter.description || ""}
