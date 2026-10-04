@@ -91,12 +91,12 @@
 .sel-div { width: 1px; height: 20px; margin: 0 4px; background: color-mix(in oklab, currentColor 30%, transparent); }
 
 /* ── outline (docked on wide screens, modal on phones) ── */
-.outline { display: flex; flex-direction: column; min-height: 100%; }
-.outline-head { display: grid; gap: 12px; padding: 12px 8px 16px; }
+.outline { display: flex; flex-direction: column; min-height: 100%; min-width: 0; max-width: 100%; }
+.outline-head { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; padding: 12px 8px 16px; }
 .outline-title-row { display: flex; align-items: center; gap: 12px; }
 .outline-type { width: 44px; height: 44px; flex: none; display: grid; place-items: center; background: var(--acc); color: var(--on-acc); }
-.outline-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.outline-stats { display: flex; justify-content: space-between; gap: 8px; font-variant-numeric: tabular-nums; }
+.outline-title { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.outline-stats { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 8px; font-variant-numeric: tabular-nums; }
 .outline-section { padding: 4px 12px 8px; }
 .outline-foot { position: sticky; bottom: 0; margin-top: auto; padding: 16px 4px 4px; background: linear-gradient(to top, var(--outline-bg, var(--surface-container-low)) 70%, transparent); }
 .outline-foot .btn { width: 100%; }
@@ -107,13 +107,13 @@
   overflow-y: auto; border-radius: var(--shape-xl); background: var(--outline-bg);
 }
 
-.ol-list, .ol-subs { margin: 0; padding: 0; list-style: none; display: grid; gap: 2px; }
+.ol-list, .ol-subs { margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: minmax(0, 1fr); gap: 2px; }
 .ol-subs { margin: 2px 0 6px 20px; }
-.ol-row { display: flex; align-items: center; border-radius: var(--shape-full); transition: background var(--fade); }
+.ol-row { display: flex; align-items: center; min-width: 0; border-radius: var(--shape-xl); transition: background var(--fade); }
 .ol-row.is-active { background: var(--secondary-container); color: var(--on-secondary-container); }
 .ol-icon { width: 40px; height: 40px; flex: none; }
-.ol-main { flex: 1; min-width: 0; display: flex; align-items: center; gap: 12px; height: 48px; padding: 0 8px 0 4px; border: 0; border-radius: var(--shape-full); background: transparent; color: inherit; text-align: left; }
-.ol-sub .ol-main { height: 40px; gap: 8px; }
+.ol-main { flex: 1; min-width: 0; display: flex; align-items: center; gap: 12px; min-height: 48px; padding: 4px 8px 4px 4px; border: 0; border-radius: var(--shape-full); background: transparent; color: inherit; text-align: left; }
+.ol-sub .ol-main { min-height: 40px; gap: 8px; }
 .ol-num {
   width: 30px; height: 30px; flex: none; display: grid; place-items: center; background: var(--acc-c); color: var(--on-acc-c);
   font: 700 13px/1 var(--font); transition: clip-path var(--spring-default), background var(--fade);
@@ -121,7 +121,7 @@
 .ol-row.is-active .ol-num { background: var(--acc); color: var(--on-acc); }
 .ol-sub-num { flex: none; min-width: 32px; padding-left: 4px; color: var(--on-surface-variant); font-variant-numeric: tabular-nums; }
 .ol-row.is-active .ol-sub-num { color: inherit; }
-.ol-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ol-title { min-width: 0; overflow-wrap: anywhere; line-height: 1.3; }
 
 .outline-root { position: fixed; inset: 0; z-index: 45; visibility: hidden; pointer-events: none; transition: visibility 0s linear 300ms; }
 .outline-root.is-open { visibility: visible; pointer-events: auto; transition-delay: 0s; }
@@ -129,7 +129,7 @@
 .outline-root.is-open .outline-scrim { opacity: 1; }
 .outline-modal {
   --outline-bg: var(--surface-container-low);
-  position: absolute; inset: 0 auto 0 0; width: min(88vw, 360px); overflow-y: auto; overscroll-behavior: contain;
+  position: absolute; inset: 0 auto 0 0; width: min(88vw, 360px); overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain;
   padding: calc(16px + env(safe-area-inset-top)) 12px calc(12px + env(safe-area-inset-bottom));
   border-radius: 0 var(--shape-xl) var(--shape-xl) 0; background: var(--outline-bg); box-shadow: var(--elev-3);
   transform: translateX(-104%); transition: transform 240ms cubic-bezier(.3, 0, .8, .15);
