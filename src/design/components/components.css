@@ -166,7 +166,7 @@
 .field-pill .field-input { height: 56px; padding: 0 52px 0 52px; border-radius: var(--shape-full); }
 .field-pill .field-label { top: 15px; left: 54px; }
 .field-pill .field-input:focus + .field-label, .field-pill .field-input:not(:placeholder-shown) + .field-label { opacity: 0; }
-.chips-row { display: flex; gap: 8px; overflow-x: auto; margin: 16px -16px 8px; padding: 4px 16px 8px; scrollbar-width: none; scroll-snap-type: x proximity; }
+.chips-row { display: flex; gap: 8px; overflow-x: auto; margin: 16px -16px 8px; padding: 4px 16px 8px; scrollbar-width: none; scroll-snap-type: x proximity; scroll-padding-inline: 16px; }
 .chips-row::-webkit-scrollbar { display: none; }
 .chips-row .chip { scroll-snap-align: start; }
 .sheet-form { display: grid; gap: 24px; }
