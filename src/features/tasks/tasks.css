@@ -1,0 +1,113 @@
+/* Tasks feature — screens and task components (built on the design system) */
+
+.page { max-width: var(--content-max); margin: 0 auto; padding: 0 16px calc(var(--nav-bar-h) + 120px); }
+.page-head { padding: 4px 4px 20px; }
+.page-head .display { margin-top: 4px; }
+
+/* ── hero progress card ── */
+.hero {
+  display: grid; gap: 20px; padding: 24px; border-radius: var(--shape-xxl) var(--shape-xl) var(--shape-xxl) var(--shape-xl);
+  background: var(--primary-container); color: var(--on-primary-container);
+}
+.hero-row { display: flex; align-items: center; gap: 20px; }
+.hero-badge { position: relative; width: 96px; height: 96px; flex-shrink: 0; display: grid; place-items: center; }
+.hero-badge-bg { position: absolute; inset: 0; background: var(--primary); animation: spin 28s linear infinite; }
+.hero-badge-text { position: relative; color: var(--on-primary); font: 800 30px/1 var(--font); font-variation-settings: "wdth" 120; font-variant-numeric: tabular-nums; }
+.hero-badge-text small { font-size: 16px; font-weight: 700; margin-left: 1px; }
+.hero-text { min-width: 0; display: grid; gap: 4px; }
+.hero .wavy { color: var(--primary); }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── search, status filter, room chips ── */
+.toolbar { display: grid; gap: 12px; margin-top: 20px; }
+.field-pill .field-input { height: 56px; padding: 0 52px 0 52px; border-radius: var(--shape-full); }
+.field-pill .field-label { top: 15px; left: 54px; }
+.field-pill .field-input:focus + .field-label, .field-pill .field-input:not(:placeholder-shown) + .field-label { opacity: 0; }
+.chips-row { display: flex; gap: 8px; overflow-x: auto; margin: 16px -16px 8px; padding: 4px 16px 8px; scrollbar-width: none; scroll-snap-type: x proximity; }
+.chips-row::-webkit-scrollbar { display: none; }
+.chips-row .chip { scroll-snap-align: start; }
+
+/* ── priority groups: big outer radii, small inner radii ── */
+.groups { display: grid; gap: 24px; margin-top: 12px; }
+.group-head { display: flex; align-items: center; gap: 10px; padding: 0 8px 10px; }
+.group-icon { width: 32px; height: 32px; display: grid; place-items: center; border-radius: var(--shape-full); background: var(--acc); color: var(--on-acc); }
+.group-count { margin-left: auto; padding: 4px 12px; border-radius: var(--shape-full); background: var(--acc-c); color: var(--on-acc-c); font-variant-numeric: tabular-nums; }
+.group-rows { margin: 0; padding: 0; list-style: none; display: grid; gap: 2px; }
+
+.swipe { position: relative; }
+.swipe-clip { position: relative; overflow: hidden; border-radius: var(--shape-xs); }
+.swipe:first-child .swipe-clip { border-top-left-radius: var(--shape-xl); border-top-right-radius: var(--shape-xl); }
+.swipe:last-child .swipe-clip { border-bottom-left-radius: var(--shape-xl); border-bottom-right-radius: var(--shape-xl); }
+.swipe-actions { position: absolute; inset: 0; display: flex; justify-content: flex-end; align-items: center; gap: 8px; padding-right: 10px; background: var(--surface-container-high); }
+.swipe-action {
+  width: 60px; height: 60px; display: grid; place-content: center; justify-items: center; gap: 2px; border: 0; border-radius: var(--shape-full);
+  background: var(--acc-c); color: var(--on-acc-c); font: 700 11px/1 var(--font); transition: border-radius var(--spring-fast), background var(--fade);
+}
+.swipe-action[aria-pressed="true"] { background: var(--acc); color: var(--on-acc); border-radius: var(--shape-lg-inc); }
+.swipe-action:active { border-radius: var(--shape-md); }
+
+.task {
+  position: relative; z-index: 1; display: flex; align-items: center; gap: 2px; min-height: 76px; padding: 6px 4px 6px 4px;
+  background: var(--surface-container-low); touch-action: pan-y; cursor: pointer; -webkit-user-select: none; user-select: none;
+  transition: transform var(--spring-default), background var(--fade);
+}
+.task.is-dragging { transition: none; }
+.task-body { flex: 1; min-width: 0; display: grid; justify-items: start; gap: 6px; padding: 6px 0; }
+.task-title { overflow-wrap: anywhere; transition: color var(--fade); }
+.task.done .task-title { color: var(--on-surface-variant); text-decoration: line-through; text-decoration-thickness: 2px; text-decoration-color: color-mix(in oklab, currentColor 55%, transparent); }
+.task.done .room-tag { opacity: .6; }
+.room-tag { display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 12px 0 9px; border-radius: var(--shape-full); background: var(--acc-c); color: var(--on-acc-c); font: 600 12px/1 var(--font); letter-spacing: .02em; transition: opacity var(--fade); }
+
+/* checkbox: circle ⇄ scalloped cookie */
+.cb { width: 56px; height: 56px; flex-shrink: 0; display: grid; place-items: center; border: 0; border-radius: var(--shape-full); background: transparent; color: var(--on-surface); }
+.cb-shape { position: relative; width: 30px; height: 30px; display: grid; place-items: center; background: var(--outline); color: var(--on-acc); transition: clip-path var(--spring-default), background var(--fade); }
+.cb-shape::before { content: ""; position: absolute; inset: 2.5px; background: var(--surface-container-low); clip-path: inherit; transition: opacity var(--fade), clip-path var(--spring-default); }
+.cb-shape svg { position: relative; opacity: 0; transform: scale(.3) rotate(-30deg); transition: opacity var(--fade), transform var(--spring-default); }
+.cb[aria-checked="true"] .cb-shape { background: var(--acc); }
+.cb[aria-checked="true"] .cb-shape::before { opacity: 0; }
+.cb[aria-checked="true"] .cb-shape svg { opacity: 1; transform: none; }
+
+/* overflow menu */
+.menu { position: absolute; z-index: 10; right: 12px; top: 56px; min-width: 176px; padding: 8px; border-radius: var(--shape-lg-inc); background: var(--surface-container-highest); box-shadow: var(--elev-3); animation: pop var(--spring-fast); transform-origin: top right; }
+.menu-item { width: 100%; height: 48px; display: flex; align-items: center; gap: 12px; padding: 0 16px; border: 0; border-radius: var(--shape-md); background: transparent; color: var(--on-surface); font: 500 16px/1 var(--font); text-align: left; }
+.menu-danger { color: var(--error); }
+
+/* loading skeletons */
+.skeletons { display: grid; gap: 2px; }
+.skeleton { height: 76px; background: var(--surface-container-low); animation: shimmer 1.4s ease-in-out infinite; }
+.skeleton:first-child { border-radius: var(--shape-xl) var(--shape-xl) var(--shape-xs) var(--shape-xs); }
+.skeleton:last-child { border-radius: var(--shape-xs) var(--shape-xs) var(--shape-xl) var(--shape-xl); }
+@keyframes shimmer { 50% { background: var(--surface-container-high); } }
+
+/* ── add / edit sheet ── */
+.sheet-form { display: grid; gap: 24px; }
+.sheet-section { margin: 0; padding: 0; border: 0; display: grid; gap: 12px; min-width: 0; }
+.sheet-section legend { padding: 0 4px; margin-bottom: 12px; float: left; width: 100%; }
+.sheet-section legend + * { clear: both; }
+.chip-wrap { display: flex; flex-wrap: wrap; gap: 8px; }
+.sheet-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px; }
+
+/* ── rooms screen ── */
+.rooms-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+.room-card {
+  position: relative; display: grid; align-content: space-between; gap: 20px; min-height: 184px; padding: 20px; text-align: left;
+  border: 0; background: var(--acc-c); color: var(--on-acc-c);
+  transition: border-radius var(--spring-default), transform var(--spring-default);
+}
+.room-card:active { transform: scale(.97); border-radius: var(--shape-xxl) !important; }
+.room-card.is-wide { grid-column: 1 / -1; min-height: 148px; grid-template-columns: auto 1fr; align-items: center; align-content: center; column-gap: 20px; row-gap: 16px; background: var(--primary); color: var(--on-primary); }
+.room-icon { width: 60px; height: 60px; display: grid; place-items: center; background: var(--acc); color: var(--on-acc); }
+.is-wide .room-icon { width: 72px; height: 72px; background: var(--primary-container); color: var(--on-primary-container); }
+.room-info { display: grid; gap: 2px; }
+.room-info .body-md { opacity: .8; }
+.room-bar { height: 8px; border-radius: 8px; overflow: hidden; background: color-mix(in oklab, currentColor 18%, transparent); }
+.is-wide .room-bar { grid-column: 1 / -1; }
+.room-bar span { display: block; height: 100%; border-radius: 8px; background: var(--acc); transition: width var(--spring-slow); }
+.is-wide .room-bar span { background: var(--on-primary); }
+.room-go { position: absolute; top: 20px; right: 16px; opacity: .55; }
+.is-wide .room-go { top: 50%; translate: 0 -50%; right: 20px; }
+
+@media (min-width: 840px) {
+  .rooms-grid { grid-template-columns: repeat(3, 1fr); }
+  .page { --content-max: 760px; padding-top: 8px; }
+}

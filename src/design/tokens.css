@@ -1,0 +1,86 @@
+/* ──────────────────────────────────────────────────────────────
+   Material 3 Expressive — design tokens
+   Colour is authored in OKLCH and switches with `light-dark()`,
+   so one declaration covers both themes (and the manual toggle).
+   ────────────────────────────────────────────────────────────── */
+:root {
+  color-scheme: light dark;
+
+  /* ── colour roles ── */
+  --primary: light-dark(oklch(.50 .21 285), oklch(.80 .13 285));
+  --on-primary: light-dark(oklch(.99 .01 285), oklch(.29 .15 285));
+  --primary-container: light-dark(oklch(.91 .075 285), oklch(.39 .17 285));
+  --on-primary-container: light-dark(oklch(.27 .15 285), oklch(.93 .05 285));
+
+  --secondary: light-dark(oklch(.50 .18 335), oklch(.80 .12 335));
+  --on-secondary: light-dark(oklch(.99 .01 335), oklch(.30 .12 335));
+  --secondary-container: light-dark(oklch(.92 .06 335), oklch(.38 .12 335));
+  --on-secondary-container: light-dark(oklch(.28 .12 335), oklch(.93 .05 335));
+
+  --tertiary: light-dark(oklch(.52 .14 70), oklch(.82 .13 80));
+  --on-tertiary: light-dark(oklch(.99 .01 70), oklch(.30 .07 70));
+  --tertiary-container: light-dark(oklch(.93 .09 85), oklch(.40 .08 70));
+  --on-tertiary-container: light-dark(oklch(.30 .08 65), oklch(.94 .06 85));
+
+  --error: light-dark(oklch(.52 .21 27), oklch(.80 .12 25));
+  --on-error: light-dark(oklch(.99 .01 27), oklch(.30 .12 27));
+  --error-container: light-dark(oklch(.92 .06 25), oklch(.40 .14 27));
+  --on-error-container: light-dark(oklch(.30 .13 27), oklch(.93 .05 25));
+
+  --surface: light-dark(oklch(.985 .006 285), oklch(.18 .014 285));
+  --surface-container-lowest: light-dark(oklch(1 0 0), oklch(.15 .012 285));
+  --surface-container-low: light-dark(oklch(.968 .009 285), oklch(.215 .016 285));
+  --surface-container: light-dark(oklch(.952 .011 285), oklch(.24 .018 285));
+  --surface-container-high: light-dark(oklch(.936 .013 285), oklch(.27 .02 285));
+  --surface-container-highest: light-dark(oklch(.918 .015 285), oklch(.30 .022 285));
+  --on-surface: light-dark(oklch(.22 .02 285), oklch(.93 .01 285));
+  --on-surface-variant: light-dark(oklch(.45 .025 285), oklch(.77 .02 285));
+  --outline: light-dark(oklch(.58 .025 285), oklch(.6 .025 285));
+  --outline-variant: light-dark(oklch(.85 .02 285), oklch(.38 .025 285));
+  --scrim: oklch(0 0 0 / .42);
+  --inverse-surface: light-dark(oklch(.28 .02 285), oklch(.92 .01 285));
+  --inverse-on-surface: light-dark(oklch(.95 .01 285), oklch(.26 .02 285));
+  --inverse-primary: light-dark(oklch(.8 .13 285), oklch(.5 .21 285));
+
+  /* ── shape scale (Expressive adds large-increased / xl / xxl) ── */
+  --shape-xs: 4px;
+  --shape-sm: 8px;
+  --shape-md: 12px;
+  --shape-lg: 16px;
+  --shape-lg-inc: 20px;
+  --shape-xl: 28px;
+  --shape-xl-inc: 32px;
+  --shape-xxl: 48px;
+  --shape-full: 999px;
+
+  /* ── motion: springs for spatial change, eased fades for effects ── */
+  --spring-fast: 280ms linear(0, .42 11%, .86 24%, 1.04 36%, 1.06 44%, 1.01 62%, .995 80%, 1);
+  --spring-default: 480ms linear(0, .3 8%, .71 18%, .96 29%, 1.07 40%, 1.07 49%, 1.02 66%, .997 84%, 1);
+  --spring-slow: 700ms linear(0, .22 8%, .6 17%, .92 28%, 1.09 40%, 1.1 50%, 1.03 68%, .998 86%, 1);
+  --fade: 160ms cubic-bezier(.2, 0, 0, 1);
+
+  /* ── elevation ── */
+  --elev-1: 0 1px 2px oklch(0 0 0 / .18), 0 1px 3px 1px oklch(0 0 0 / .1);
+  --elev-2: 0 1px 2px oklch(0 0 0 / .2), 0 2px 6px 2px oklch(0 0 0 / .12);
+  --elev-3: 0 2px 4px oklch(0 0 0 / .2), 0 6px 12px 4px oklch(0 0 0 / .12);
+
+  /* ── type ── */
+  --font: "Roboto Flex", "Roboto", system-ui, -apple-system, "Segoe UI", sans-serif;
+
+  /* ── layout ── */
+  --nav-bar-h: 80px;
+  --rail-w: 96px;
+  --content-max: 720px;
+}
+
+:root[data-theme="light"] { color-scheme: light; }
+:root[data-theme="dark"] { color-scheme: dark; }
+
+/* ── accent families: set --hue on an element with .acc and use the roles ── */
+.acc {
+  --hue: 285;
+  --acc: light-dark(oklch(.50 .17 var(--hue)), oklch(.80 .12 var(--hue)));
+  --on-acc: light-dark(oklch(.99 .01 var(--hue)), oklch(.27 .08 var(--hue)));
+  --acc-c: light-dark(oklch(.92 .07 var(--hue)), oklch(.38 .09 var(--hue)));
+  --on-acc-c: light-dark(oklch(.28 .10 var(--hue)), oklch(.92 .05 var(--hue)));
+}

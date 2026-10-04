@@ -1,0 +1,44 @@
+/* Reset, typography and the shared state layer */
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; -webkit-tap-highlight-color: transparent; }
+body {
+  margin: 0;
+  min-height: 100dvh;
+  background: var(--surface);
+  color: var(--on-surface);
+  font: 400 16px/1.5 var(--font);
+  -webkit-font-smoothing: antialiased;
+}
+button, input { font: inherit; color: inherit; }
+button { cursor: pointer; -webkit-user-select: none; user-select: none; }
+h1, h2, h3, p { margin: 0; }
+:focus-visible { outline: 3px solid var(--primary); outline-offset: 2px; }
+
+/* ── type scale (Expressive: wide, heavy display; calm body) ── */
+.display { font: 800 44px/1.02 var(--font); font-variation-settings: "wdth" 125, "opsz" 96; letter-spacing: -.02em; }
+.headline { font: 700 28px/1.14 var(--font); font-variation-settings: "wdth" 115, "opsz" 48; letter-spacing: -.01em; }
+.title-lg { font: 700 22px/1.25 var(--font); font-variation-settings: "wdth" 108; }
+.title-md { font: 600 16px/1.4 var(--font); letter-spacing: .01em; }
+.body-lg { font: 400 16px/1.5 var(--font); }
+.body-md { font: 400 14px/1.43 var(--font); letter-spacing: .01em; }
+.label-lg { font: 600 14px/1.3 var(--font); letter-spacing: .01em; }
+.label-md { font: 600 12px/1.3 var(--font); letter-spacing: .04em; }
+.overline { font: 700 12px/1.3 var(--font); letter-spacing: .1em; text-transform: uppercase; }
+.muted { color: var(--on-surface-variant); }
+
+/* ── state layer used by every pressable surface ── */
+.state { position: relative; overflow: hidden; isolation: isolate; }
+.state::after {
+  content: ""; position: absolute; inset: 0; z-index: -1;
+  background: currentColor; opacity: 0; pointer-events: none;
+  transition: opacity var(--fade);
+}
+@media (hover: hover) { .state:hover::after { opacity: .08; } }
+.state:focus-visible::after { opacity: .1; }
+.state:active::after { opacity: .14; }
+
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition-duration: 1ms !important; animation-duration: 1ms !important; animation-iteration-count: 1 !important; }
+}
