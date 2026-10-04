@@ -35,6 +35,14 @@ export default function DocsProvider({ children }) {
     return book;
   }, []);
 
+  /** Add fully-formed books (title, type, tags, chapters), e.g. from a JSON import. Returns the stored books. */
+  const importBooks = useCallback((drafts) => {
+    const now = Date.now();
+    const added = drafts.map((d, i) => ({ id: uid("bk"), title: d.title, tags: d.tags, type: d.type, chapters: d.chapters, createdAt: now + i, updatedAt: now + i }));
+    setBooks((p) => [...p, ...added]);
+    return added;
+  }, []);
+
   const updateBook = useCallback((id, patch) => {
     setBooks((p) => p.map((b) => (b.id === id ? { ...b, ...patch, updatedAt: Date.now() } : b)));
   }, []);
@@ -60,8 +68,8 @@ export default function DocsProvider({ children }) {
   }, []);
 
   const value = useMemo(
-    () => ({ books, createBook, updateBook, editChapters, deleteBook, restoreBook }),
-    [books, createBook, updateBook, editChapters, deleteBook, restoreBook]
+    () => ({ books, createBook, importBooks, updateBook, editChapters, deleteBook, restoreBook }),
+    [books, createBook, importBooks, updateBook, editChapters, deleteBook, restoreBook]
   );
   return <DocsContext.Provider value={value}>{children}</DocsContext.Provider>;
 }
