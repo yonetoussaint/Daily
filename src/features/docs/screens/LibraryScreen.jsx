@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { BookOpenText, FileJson, Menu, Moon, Plus, Search, SearchX, Sun, SunMoon, X } from "lucide-react";
+import { BookOpenText, FileDown, FileJson, Menu, Moon, Plus, Search, SearchX, Sun, SunMoon, X } from "lucide-react";
 import { Button, Chip, EmptyState, Fab, IconButton, TextField, TopAppBar, useScrollingDown, useSnackbar } from "../../../design/components";
 import { useDrawer } from "../../../app/DrawerProvider";
 import { useNav } from "../../../app/NavProvider";
@@ -9,6 +9,7 @@ import { useDocs } from "../DocsProvider";
 import BookRow from "../components/BookRow";
 import BookSheet from "../components/BookSheet";
 import ImportSheet from "../components/ImportSheet";
+import ExportSheet from "../components/ExportSheet";
 
 const THEME_ICON = { auto: SunMoon, light: Sun, dark: Moon };
 
@@ -25,6 +26,7 @@ export default function LibraryScreen() {
   const [swipeId, setSwipeId] = useState(null);
   const [sheet, setSheet] = useState(null); // { book } — book is undefined when creating
   const [importing, setImporting] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const ThemeIcon = THEME_ICON[theme.mode];
 
   const rows = useMemo(() => {
@@ -104,6 +106,7 @@ export default function LibraryScreen() {
         actions={
           <>
             <IconButton label="Import from JSON" onClick={() => setImporting(true)}><FileJson size={22} /></IconButton>
+            {books.length > 0 && <IconButton label="Export all as JSON" onClick={() => setExporting(true)}><FileDown size={22} /></IconButton>}
             <IconButton label={`Theme: ${theme.mode}. Switch to ${theme.next}`} onClick={theme.cycle}>
               <ThemeIcon size={22} />
             </IconButton>
@@ -145,6 +148,7 @@ export default function LibraryScreen() {
 
       <Fab className="docs-fab" icon={<Plus size={26} strokeWidth={2.6} />} label="New doc" extended={!scrollingDown} onClick={() => setSheet({})} />
       {importing && <ImportSheet onClose={() => setImporting(false)} onImport={runImport} />}
+      {exporting && <ExportSheet books={books} onClose={() => setExporting(false)} />}
       {sheet && <BookSheet book={sheet.book} onClose={() => setSheet(null)} onSave={save} />}
     </>
   );

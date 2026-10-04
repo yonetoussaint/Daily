@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
-import { ArrowLeft, Check, ListTree, Pencil, Plus } from "lucide-react";
+import { ArrowLeft, Check, FileDown, ListTree, Pencil, Plus } from "lucide-react";
 import { Button, EmptyState, Fab, IconButton, TopAppBar, useScrollingDown, useSnackbar } from "../../../design/components";
 import { useMediaQuery } from "../../../design/useMediaQuery";
 import { useNav } from "../../../app/NavProvider";
@@ -9,6 +9,7 @@ import { FormattingDock, SelectionToolbar, useFormatting } from "../components/f
 import { OutlineModal, OutlinePanel } from "../components/Outline";
 import NodeSheet from "../components/NodeSheet";
 import BookSheet from "../components/BookSheet";
+import ExportSheet from "../components/ExportSheet";
 
 export default function BookScreen() {
   const { bookId, closeBook } = useNav();
@@ -34,7 +35,7 @@ function Editor({ book }) {
   const [collapsed, setCollapsed] = useState({});
   const [editing, setEditing] = useState(false);
   const [outlineOpen, setOutlineOpen] = useState(wide);
-  const [sheet, setSheet] = useState(null); // { kind: "node", chapterId, subId } | { kind: "book" }
+  const [sheet, setSheet] = useState(null); // { kind: "node", chapterId, subId } | { kind: "book" } | { kind: "export" }
   const editorRef = useRef(null);
 
   useLayoutEffect(() => window.scrollTo(0, 0), []);
@@ -209,6 +210,7 @@ function Editor({ book }) {
         actions={
           <>
             <span className="words-pill label-md" aria-label={`${activeWords} words in this page`}>{activeWords.toLocaleString()} words</span>
+            <IconButton label="Export as JSON" onClick={() => setSheet({ kind: "export" })}><FileDown size={22} /></IconButton>
             <IconButton label={outlineOpen ? "Hide outline" : "Show outline"} className={outlineOpen ? "is-on" : ""} aria-pressed={outlineOpen} onClick={() => setOutlineOpen((o) => !o)}>
               <ListTree size={22} />
             </IconButton>
@@ -274,6 +276,7 @@ function Editor({ book }) {
       <SelectionToolbar editorRef={editorRef} enabled={editing && finePointer} format={format} />
 
       {nodeSheet}
+      {sheet?.kind === "export" && <ExportSheet books={[book]} onClose={() => setSheet(null)} />}
       {sheet?.kind === "book" && (
         <BookSheet
           book={book}
