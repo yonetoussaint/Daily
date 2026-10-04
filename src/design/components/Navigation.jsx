@@ -16,7 +16,7 @@ export function NavigationBar({ items }) {
 }
 
 /** Small sticky app bar; the title fades in once the large screen title scrolls away. */
-export function TopAppBar({ title, actions }) {
+export function TopAppBar({ title, actions, leading, persistentTitle = false }) {
   const [collapsed, setCollapsed] = useState(false);
   useEffect(() => {
     const onScroll = () => setCollapsed(window.scrollY > 72);
@@ -26,8 +26,9 @@ export function TopAppBar({ title, actions }) {
   }, []);
 
   return (
-    <header className={`top-bar ${collapsed ? "is-collapsed" : ""}`}>
-      <h2 className="top-bar-title title-lg" aria-hidden={!collapsed}>{title}</h2>
+    <header className={`top-bar ${collapsed ? "is-collapsed" : ""} ${leading ? "has-leading" : ""} ${persistentTitle ? "is-persistent" : ""}`}>
+      {leading}
+      <h2 className="top-bar-title title-lg" aria-hidden={!collapsed && !persistentTitle}>{title}</h2>
       <div className="top-bar-actions">{actions}</div>
     </header>
   );

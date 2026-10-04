@@ -1,6 +1,6 @@
 # Daily
 
-A home to-do app in **Material 3 Expressive**, plus a writing workspace. React + Vite, Supabase REST for storage.
+A home to-do app in **Material 3 Expressive**, plus a writing workspace (Docs), both in the same design system. Apps are opened from the hamburger drawer. React + Vite, Supabase REST for storage.
 
 ```
 npm i && npm run dev
@@ -14,7 +14,8 @@ Set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` in `.env` to override the d
 | --- | --- |
 | `/` | **Home tasks** — progress hero, search, Open/Done filter, room chips, tasks grouped by priority |
 | `/rooms` | **Rooms** — one expressive card per room with progress; tap to jump into that room's tasks |
-| `/docs` | Writing workspace (unchanged) |
+| `/docs` | **Docs library** — search, type filter, swipe a doc to edit or delete it (with Undo) |
+| `/docs/:bookId` | **Editor** — outline of chapters and sections, read / edit modes, rich-text toolbar |
 | `/organizer` | Old URL, redirects to `/` |
 
 ## Structure
@@ -24,6 +25,8 @@ src/
 ├── main.jsx                  entry point
 ├── app/                      app shell: routes, navigation, top bar, FAB, theme toggle
 │   ├── App.jsx · AppShell.jsx · AppShell.css · useTheme.js
+│   ├── apps.jsx                  registry of the apps in the drawer — add new apps here
+│   └── AppDrawer.jsx · DrawerProvider.jsx   hamburger navigation drawer
 ├── design/                   the design system — no app logic in here
 │   ├── tokens.css            colour roles (OKLCH + light-dark()), shape scale, motion springs, elevation
 │   ├── base.css              reset, type scale, state layers
@@ -38,7 +41,11 @@ src/
     │   ├── useSwipe.js       swipe-to-reveal gesture
     │   ├── screens/          TasksScreen · RoomsScreen
     │   └── components/       TaskCard · TaskSheet · SummaryCard
-    └── docs/DocsApp.tsx
+    └── docs/
+        ├── model.js · storage.js    types, word counts, seed data; localStorage persistence
+        ├── DocsProvider.jsx         library state (debounced save, undoable delete)
+        ├── screens/                 LibraryScreen · BookScreen
+        └── components/              BookRow · BookSheet · NodeSheet · Outline · formatting (dock + selection pill)
 ```
 
 ## Design notes

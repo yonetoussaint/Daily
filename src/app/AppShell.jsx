@@ -1,8 +1,9 @@
 import { Outlet, useLocation } from "react-router-dom";
-import { LayoutGrid, ListChecks, Moon, Plus, Sun, SunMoon } from "lucide-react";
+import { LayoutGrid, ListChecks, Menu, Moon, Plus, Sun, SunMoon } from "lucide-react";
 import { Fab, IconButton, NavigationBar, TopAppBar, useScrollingDown } from "../design/components";
 import { TaskSheet, TasksProvider, useTasks } from "../features/tasks";
 import { useTheme } from "./useTheme";
+import { useDrawer } from "./DrawerProvider";
 import "./AppShell.css";
 
 const DESTINATIONS = [
@@ -16,6 +17,7 @@ function Layout() {
   const { pathname } = useLocation();
   const { editor, openEditor } = useTasks();
   const theme = useTheme();
+  const drawer = useDrawer();
   const scrollingDown = useScrollingDown();
   const ThemeIcon = THEME_ICON[theme.mode];
 
@@ -25,6 +27,11 @@ function Layout() {
       <div className="shell-main">
         <TopAppBar
           title={TITLES[pathname] ?? "Daily"}
+          leading={
+            <IconButton label="Open menu" onClick={drawer.open}>
+              <Menu size={24} />
+            </IconButton>
+          }
           actions={
             <IconButton label={`Theme: ${theme.mode}. Switch to ${theme.next}`} onClick={theme.cycle}>
               <ThemeIcon size={22} />

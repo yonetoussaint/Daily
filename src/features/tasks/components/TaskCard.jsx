@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 import { Check, MoreVertical, Pencil, Trash2 } from "lucide-react";
 import { cookie, circle } from "../../../design/shapes";
 import { PRIORITIES, PRIORITY_META, roomMeta } from "../model";
-import { useSwipe } from "../useSwipe";
+import { useSwipe } from "../../../design/useSwipe";
 
 const ACTIONS_WIDTH = 216; // 3 round buttons (60px) + gaps + padding
 

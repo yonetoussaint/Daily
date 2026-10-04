@@ -120,8 +120,14 @@
 /* ── top app bar ── */
 .top-bar { position: sticky; top: 0; z-index: 20; height: 64px; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 0 8px 0 20px; background: transparent; transition: background var(--fade); }
 .top-bar.is-collapsed { background: var(--surface-container); }
+.top-bar.has-leading { padding-left: 4px; }
+.top-bar.has-leading .top-bar-title { margin-left: 4px; }
 .top-bar-title { opacity: 0; transform: translateY(6px); transition: opacity var(--fade), transform var(--spring-default); }
-.top-bar.is-collapsed .top-bar-title { opacity: 1; transform: none; }
+.top-bar.is-collapsed .top-bar-title, .top-bar.is-persistent .top-bar-title { opacity: 1; transform: none; }
+.top-bar-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.top-bar.is-persistent { background: var(--surface); }
+.top-bar.is-persistent.is-collapsed { box-shadow: 0 1px 0 var(--outline-variant); }
+.icon-btn.is-on { background: var(--primary-container); color: var(--on-primary-container); }
 .top-bar-actions { display: flex; align-items: center; margin-left: auto; }
 
 /* ── sheet / dialog ── */
@@ -154,3 +160,18 @@
 .snackbar-close { width: 44px; height: 44px; display: grid; place-items: center; border: 0; border-radius: var(--shape-full); background: transparent; color: inherit; }
 @keyframes snack-in { from { transform: translateY(24px) scale(.96); opacity: 0; } }
 @media (min-width: 840px) { .snackbar-host { bottom: 24px; padding-left: var(--rail-w); } }
+
+
+/* ── shared form / list helpers (used by several features) ── */
+.field-pill .field-input { height: 56px; padding: 0 52px 0 52px; border-radius: var(--shape-full); }
+.field-pill .field-label { top: 15px; left: 54px; }
+.field-pill .field-input:focus + .field-label, .field-pill .field-input:not(:placeholder-shown) + .field-label { opacity: 0; }
+.chips-row { display: flex; gap: 8px; overflow-x: auto; margin: 16px -16px 8px; padding: 4px 16px 8px; scrollbar-width: none; scroll-snap-type: x proximity; }
+.chips-row::-webkit-scrollbar { display: none; }
+.chips-row .chip { scroll-snap-align: start; }
+.sheet-form { display: grid; gap: 24px; }
+.sheet-section { margin: 0; padding: 0; border: 0; display: grid; gap: 12px; min-width: 0; }
+.sheet-section legend { padding: 0 4px; margin-bottom: 12px; float: left; width: 100%; }
+.sheet-section legend + * { clear: both; }
+.chip-wrap { display: flex; flex-wrap: wrap; gap: 8px; }
+.sheet-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px; }
