@@ -12,7 +12,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 const ROOT = { app: "launcher", tab: "tasks", bookId: null, depth: 0 };
 const read = () => {
   const s = window.history.state;
-  return s && typeof s.app === "string" ? { ...ROOT, ...s } : ROOT;
+  return window.location.pathname === "/" && s && typeof s.app === "string" ? { ...ROOT, ...s } : ROOT;
 };
 
 const NavContext = createContext({ ...ROOT });
@@ -23,17 +23,24 @@ export default function NavProvider({ children }) {
   const ref = useRef(view);
 
   useEffect(() => {
-    if (!window.history.state?.app) window.history.replaceState(ref.current, "");
-    const onPop = () => { ref.current = read(); setView(ref.current); };
-    window.addEventListener("popstate", onPop);
-    return () => window.removeEventListener("popstate", onPop);
+    // Always live on "/": an old /docs or /docs/<id> URL (bookmark, previous build, history entry)
+    // opens the launcher and is rewritten to "/", so back never lands on a stale path.
+    const sync = () => {
+      if (window.location.pathname !== "/") window.history.replaceState(ROOT, "", "/");
+      else if (!window.history.state?.app) window.history.replaceState(ROOT, "", "/");
+      ref.current = read();
+      setView(ref.current);
+    };
+    if (window.location.pathname !== "/" || !window.history.state?.app) window.history.replaceState(ref.current, "", "/");
+    window.addEventListener("popstate", sync);
+    return () => window.removeEventListener("popstate", sync);
   }, []);
 
   const go = useCallback((next, push) => {
     ref.current = next;
     setView(next);
-    if (push) window.history.pushState(next, "");
-    else window.history.replaceState(next, "");
+    if (push) window.history.pushState(next, "", "/");
+    else window.history.replaceState(next, "", "/");
   }, []);
 
   const goApp = useCallback((app) => {
