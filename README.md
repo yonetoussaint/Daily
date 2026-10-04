@@ -10,22 +10,23 @@ Set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` in `.env` to override the d
 
 ## Screens
 
-| Route | What it is |
+Daily is a single-page app: no URL routes, navigation is in-app state (`src/app/NavProvider.jsx`), and the last view is remembered across reloads.
+
+| View | What it is |
 | --- | --- |
-| `/` | **Home tasks** — progress hero, search, Open/Done filter, room chips, tasks grouped by priority |
-| `/rooms` | **Rooms** — one expressive card per room with progress; tap to jump into that room's tasks |
-| `/docs` | **Docs library** — search, type filter, swipe a doc to edit or delete it (with Undo) |
-| `/docs/:bookId` | **Editor** — outline of chapters and sections, read / edit modes, rich-text toolbar |
-| `/organizer` | Old URL, redirects to `/` |
+| Home → Tasks | **Home tasks** — progress hero, search, Open/Done filter, room chips, tasks grouped by priority |
+| Home → Rooms | **Rooms** — one expressive card per room with progress; tap to jump into that room's tasks |
+| Docs → Library | **Docs library** — search, type filter, swipe a doc to edit or delete it (with Undo) |
+| Docs → Editor | **Editor** — outline of chapters and sections, read / edit modes, rich-text toolbar |
 
 ## Structure
 
 ```
 src/
 ├── main.jsx                  entry point
-├── app/                      app shell: routes, navigation, top bar, FAB, theme toggle
-│   ├── App.jsx · AppShell.jsx · AppShell.css · useTheme.js
-│   ├── apps.jsx                  registry of the apps in the drawer — add new apps here
+├── app/                      app shell: navigation state, drawer, top bar, FAB, theme toggle
+│   ├── App.jsx · NavProvider.jsx · AppShell.jsx · AppShell.css · useTheme.js
+│   ├── apps.jsx                  registry of the apps in the drawer — add new apps here + a case in App.jsx
 │   └── AppDrawer.jsx · DrawerProvider.jsx   hamburger navigation drawer
 ├── design/                   the design system — no app logic in here
 │   ├── tokens.css            colour roles (OKLCH + light-dark()), shape scale, motion springs, elevation
@@ -44,6 +45,7 @@ src/
     └── docs/
         ├── model.js · storage.js    types, word counts, seed data; localStorage persistence
         ├── DocsProvider.jsx         library state (debounced save, undoable delete)
+        ├── DocsApp.jsx              picks Library or Editor
         ├── screens/                 LibraryScreen · BookScreen
         └── components/              BookRow · BookSheet · NodeSheet · Outline · formatting (dock + selection pill)
 ```

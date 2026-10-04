@@ -1,15 +1,20 @@
 import { useEffect, useState } from "react";
-import { NavLink } from "react-router-dom";
 
 /** Bottom navigation bar on phones, navigation rail from 840px up. */
-export function NavigationBar({ items }) {
+export function NavigationBar({ items, value, onChange }) {
   return (
     <nav className="nav" aria-label="Primary">
-      {items.map(({ to, label, icon, end }) => (
-        <NavLink key={to} to={to} end={end} className="nav-item">
+      {items.map(({ id, label, icon }) => (
+        <button
+          key={id}
+          type="button"
+          className={`nav-item${value === id ? " active" : ""}`}
+          aria-current={value === id ? "page" : undefined}
+          onClick={() => onChange(id)}
+        >
           <span className="nav-indicator state">{icon}</span>
           <span className="nav-label label-md">{label}</span>
-        </NavLink>
+        </button>
       ))}
     </nav>
   );

@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
-import { Navigate, useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, Check, ListTree, Pencil, Plus } from "lucide-react";
 import { Button, EmptyState, Fab, IconButton, TopAppBar, useScrollingDown, useSnackbar } from "../../../design/components";
 import { useMediaQuery } from "../../../design/useMediaQuery";
+import { useNav } from "../../../app/NavProvider";
 import { blankChapter, countWords, typeInfo, uid, wordsInChapters } from "../model";
 import { useDocs } from "../DocsProvider";
 import { FormattingDock, SelectionToolbar, useFormatting } from "../components/formatting";
@@ -11,15 +11,16 @@ import NodeSheet from "../components/NodeSheet";
 import BookSheet from "../components/BookSheet";
 
 export default function BookScreen() {
-  const { bookId } = useParams();
+  const { bookId, closeBook } = useNav();
   const { books } = useDocs();
   const book = books.find((b) => b.id === bookId);
-  if (!book) return <Navigate to="/docs" replace />;
-  return <Editor key={book.id} book={book} />;
+  // a doc that no longer exists sends you back to the library
+  useEffect(() => { if (!book) closeBook(); }, [book, closeBook]);
+  return book ? <Editor key={book.id} book={book} /> : null;
 }
 
 function Editor({ book }) {
-  const navigate = useNavigate();
+  const { closeBook } = useNav();
   const snackbar = useSnackbar();
   const { updateBook, editChapters } = useDocs();
   const wide = useMediaQuery("(min-width: 840px)");
@@ -204,7 +205,7 @@ function Editor({ book }) {
       <TopAppBar
         persistentTitle
         title={title || "Untitled"}
-        leading={<IconButton label="Back to library" onClick={() => navigate("/docs")}><ArrowLeft size={24} /></IconButton>}
+        leading={<IconButton label="Back to library" onClick={closeBook}><ArrowLeft size={24} /></IconButton>}
         actions={
           <>
             <span className="words-pill label-md" aria-label={`${activeWords} words in this page`}>{activeWords.toLocaleString()} words</span>

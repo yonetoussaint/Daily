@@ -1,8 +1,8 @@
-import { useNavigate } from "react-router-dom";
 import { ChevronRight, ListChecks } from "lucide-react";
 import { cookie } from "../../../design/shapes";
 import { ROOMS } from "../model";
 import { useTasks } from "../TasksProvider";
+import { useNav } from "../../../app/NavProvider";
 
 // Alternating corner shapes give the grid its expressive rhythm.
 const CORNERS = [
@@ -33,8 +33,8 @@ function RoomCard({ name, hue, icon: Icon, lobes, amp, stats, corners, onOpen, w
 
 export default function RoomsScreen() {
   const { stats, setRoom } = useTasks();
-  const navigate = useNavigate();
-  const open = (room) => { setRoom(room); navigate("/"); };
+  const { goTab } = useNav();
+  const open = (room) => { setRoom(room); goTab("tasks"); };
 
   return (
     <div className="page">

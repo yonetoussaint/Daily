@@ -1,19 +1,14 @@
 import { useEffect, useRef } from "react";
-import { NavLink, useLocation } from "react-router-dom";
 import { APPS } from "./apps";
+import { useNav } from "./NavProvider";
 import "./AppDrawer.css";
 
 /** Modal navigation drawer (Material 3): slides in from the left, lists every app in Daily. */
 export default function AppDrawer({ open, onClose }) {
-  const { pathname } = useLocation();
+  const { app, goApp } = useNav();
   const panelRef = useRef(null);
-  const lastPath = useRef(pathname);
 
-  // Close after any navigation
-  useEffect(() => {
-    if (lastPath.current !== pathname) onClose();
-    lastPath.current = pathname;
-  }, [pathname, onClose]);
+  const select = (id) => { goApp(id); onClose(); };
 
   // Escape closes, background doesn't scroll, focus moves in and returns to the opener
   useEffect(() => {
@@ -23,7 +18,7 @@ export default function AppDrawer({ open, onClose }) {
     window.addEventListener("keydown", onKey);
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-    panelRef.current?.querySelector("a")?.focus({ preventScroll: true });
+    panelRef.current?.querySelector("button")?.focus({ preventScroll: true });
     return () => {
       window.removeEventListener("keydown", onKey);
       document.body.style.overflow = prev;
@@ -41,12 +36,13 @@ export default function AppDrawer({ open, onClose }) {
         </div>
         <p className="drawer-section label-lg">Apps</p>
         <nav className="drawer-list" aria-label="Apps">
-          {APPS.map(({ id, label, description, to, icon: Icon, hue, match }) => {
-            const active = match(pathname);
+          {APPS.map(({ id, label, description, icon: Icon, hue }) => {
+            const active = app === id;
             return (
-              <NavLink
+              <button
                 key={id}
-                to={to}
+                type="button"
+                onClick={() => select(id)}
                 className={`drawer-item state acc ${active ? "is-active" : ""}`}
                 style={{ "--hue": hue }}
                 aria-current={active ? "page" : undefined}
@@ -56,7 +52,7 @@ export default function AppDrawer({ open, onClose }) {
                   <span className="title-md">{label}</span>
                   <span className="body-md">{description}</span>
                 </span>
-              </NavLink>
+              </button>
             );
           })}
         </nav>

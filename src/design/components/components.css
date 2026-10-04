@@ -105,7 +105,7 @@
   height: calc(var(--nav-bar-h) + env(safe-area-inset-bottom)); padding: 12px 8px calc(16px + env(safe-area-inset-bottom));
   background: var(--surface-container);
 }
-.nav-item { flex: 1; max-width: 160px; display: flex; flex-direction: column; align-items: center; gap: 4px; color: var(--on-surface-variant); text-decoration: none; }
+.nav-item { flex: 1; max-width: 160px; display: flex; flex-direction: column; align-items: center; gap: 4px; color: var(--on-surface-variant); background: none; border: 0; padding: 0; font: inherit; cursor: pointer; }
 .nav-indicator { width: 64px; height: 32px; display: grid; place-items: center; border-radius: var(--shape-full); transition: background var(--fade), width var(--spring-default), border-radius var(--spring-fast); }
 .nav-item:active .nav-indicator { border-radius: var(--shape-md); }
 .nav-item.active { color: var(--on-surface); }

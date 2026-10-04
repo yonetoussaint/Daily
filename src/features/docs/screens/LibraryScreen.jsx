@@ -1,8 +1,8 @@
 import { useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { BookOpenText, Menu, Moon, Plus, Search, SearchX, Sun, SunMoon, X } from "lucide-react";
 import { Button, Chip, EmptyState, Fab, IconButton, TextField, TopAppBar, useScrollingDown, useSnackbar } from "../../../design/components";
 import { useDrawer } from "../../../app/DrawerProvider";
+import { useNav } from "../../../app/NavProvider";
 import { useTheme } from "../../../app/useTheme";
 import { CONTENT_TYPES, wordsInChapters } from "../model";
 import { useDocs } from "../DocsProvider";
@@ -12,7 +12,7 @@ import BookSheet from "../components/BookSheet";
 const THEME_ICON = { auto: SunMoon, light: Sun, dark: Moon };
 
 export default function LibraryScreen() {
-  const navigate = useNavigate();
+  const { openBook } = useNav();
   const drawer = useDrawer();
   const theme = useTheme();
   const snackbar = useSnackbar();
@@ -73,7 +73,7 @@ export default function LibraryScreen() {
             book={book}
             swipeOpen={swipeId === book.id}
             onSwipe={setSwipeId}
-            onOpen={(b) => navigate(`/docs/${b.id}`)}
+            onOpen={(b) => openBook(b.id)}
             onEdit={(b) => setSheet({ book: b })}
             onDelete={remove}
           />

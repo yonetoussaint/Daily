@@ -1,20 +1,20 @@
-import { Outlet, useLocation } from "react-router-dom";
 import { LayoutGrid, ListChecks, Menu, Moon, Plus, Sun, SunMoon } from "lucide-react";
 import { Fab, IconButton, NavigationBar, TopAppBar, useScrollingDown } from "../design/components";
-import { TaskSheet, TasksProvider, useTasks } from "../features/tasks";
+import { RoomsScreen, TaskSheet, TasksProvider, TasksScreen, useTasks } from "../features/tasks";
 import { useTheme } from "./useTheme";
 import { useDrawer } from "./DrawerProvider";
+import { useNav } from "./NavProvider";
 import "./AppShell.css";
 
 const DESTINATIONS = [
-  { to: "/", label: "Tasks", icon: <ListChecks size={24} />, end: true },
-  { to: "/rooms", label: "Rooms", icon: <LayoutGrid size={24} /> },
+  { id: "tasks", label: "Tasks", icon: <ListChecks size={24} /> },
+  { id: "rooms", label: "Rooms", icon: <LayoutGrid size={24} /> },
 ];
-const TITLES = { "/": "Home tasks", "/rooms": "Rooms" };
+const TITLES = { tasks: "Home tasks", rooms: "Rooms" };
 const THEME_ICON = { auto: SunMoon, light: Sun, dark: Moon };
 
 function Layout() {
-  const { pathname } = useLocation();
+  const { tab, goTab } = useNav();
   const { editor, openEditor } = useTasks();
   const theme = useTheme();
   const drawer = useDrawer();
@@ -23,10 +23,10 @@ function Layout() {
 
   return (
     <div className="shell">
-      <NavigationBar items={DESTINATIONS} />
+      <NavigationBar items={DESTINATIONS} value={tab} onChange={goTab} />
       <div className="shell-main">
         <TopAppBar
-          title={TITLES[pathname] ?? "Daily"}
+          title={TITLES[tab] ?? "Daily"}
           leading={
             <IconButton label="Open menu" onClick={drawer.open}>
               <Menu size={24} />
@@ -39,7 +39,7 @@ function Layout() {
           }
         />
         <main>
-          <Outlet />
+          {tab === "rooms" ? <RoomsScreen /> : <TasksScreen />}
         </main>
       </div>
       <Fab className="shell-fab" icon={<Plus size={26} strokeWidth={2.6} />} label="New task" extended={!scrollingDown} onClick={() => openEditor()} />
