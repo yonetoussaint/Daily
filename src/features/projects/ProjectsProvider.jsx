@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
-import { seedProjects, uid } from "./model";
+import { uid } from "./model";
 import { loadProjects, saveProjects } from "./storage";
 
 const Ctx = createContext(null);
@@ -7,7 +7,7 @@ export const useProjects = () => useContext(Ctx);
 
 /** Owns every project. Saved to localStorage shortly after each change and flushed on exit. */
 export default function ProjectsProvider({ children }) {
-  const [projects, setProjects] = useState(() => loadProjects() ?? seedProjects());
+  const [projects, setProjects] = useState(() => loadProjects() ?? []);
   const latest = useRef(projects);
   latest.current = projects;
 

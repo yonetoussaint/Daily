@@ -37,37 +37,3 @@ export function relativeTime(ts) {
 
 export const blankChapter = (n = 1) => ({ id: uid(), title: `Chapter ${n}`, description: "", content: "", subs: [] });
 export const blankChapters = () => [blankChapter(1)];
-
-function seedChapters() {
-  return [
-    {
-      id: uid(),
-      title: "Getting Started",
-      description: "A quick primer before you dive in.",
-      content:
-        "<p>This is your documentation workspace. Each <strong>chapter</strong> in the outline is a top-level page, and each chapter can hold nested <strong>sections</strong> — just like a real docs site.</p><p>Tap <em>Edit</em> to start writing.</p>",
-      subs: [
-        { id: uid(), title: "Installation", content: "<p>Add the package to your project:</p><pre>npm install your-package</pre><p>Then import it wherever you need it.</p>" },
-        { id: uid(), title: "Quick Start", content: "<p>Create your first entry, give it a title, and start writing. Formatting lives in the toolbar at the bottom of the editor.</p>" },
-      ],
-    },
-    {
-      id: uid(),
-      title: "API Reference",
-      description: "",
-      content: "",
-      subs: [
-        {
-          id: uid(),
-          title: "Authentication",
-          content: "<p>Requests are authenticated with a bearer token in the <code>Authorization</code> header.</p><pre>Authorization: Bearer sk_live_xxxxxxxx</pre><p>Old keys stay valid for 24 hours after a new one is issued.</p>",
-        },
-      ],
-    },
-  ];
-}
-
-export function seedLibrary() {
-  const now = Date.now();
-  return [{ id: uid("bk"), title: "Project Docs", tags: ["v1", "internal"], type: "documentation", chapters: seedChapters(), createdAt: now, updatedAt: now }];
-}

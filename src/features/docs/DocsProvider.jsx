@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
-import { blankChapters, seedLibrary, uid } from "./model";
+import { blankChapters, uid } from "./model";
 import { loadLibrary, saveLibrary } from "./storage";
 
 const DocsContext = createContext(null);
@@ -7,7 +7,7 @@ export const useDocs = () => useContext(DocsContext);
 
 /** Owns the library of books. Changes are saved to localStorage shortly after, and flushed on exit. */
 export default function DocsProvider({ children }) {
-  const [books, setBooks] = useState(() => loadLibrary() ?? seedLibrary());
+  const [books, setBooks] = useState(() => loadLibrary() ?? []);
   const latest = useRef(books);
   latest.current = books;
 

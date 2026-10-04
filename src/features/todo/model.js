@@ -6,7 +6,6 @@ export const todayIso = () => {
   const d = new Date();
   return new Date(d.getTime() - d.getTimezoneOffset() * 6e4).toISOString().slice(0, 10);
 };
-const addDays = (iso, n) => new Date(new Date(`${iso}T00:00`).getTime() + n * 864e5 + 36e5).toISOString().slice(0, 10);
 export const fmtDate = (iso) => new Date(`${iso}T00:00`).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
 
 /** Which group an open task falls in, by due date. */
@@ -24,20 +23,11 @@ export function groupOf(task, today = todayIso()) {
 
 export const EASY_GAZ = "list_easygaz";
 
-/** Two lists to start from, with a few example tasks. Edit or delete freely. */
+/** The two starting lists (containers only, no example tasks). */
 export function seedTodo() {
-  const now = Date.now();
-  const today = todayIso();
   const lists = [
     { id: EASY_GAZ, name: "Easy Gaz Plus", hue: 25 },
     { id: "list_personal", name: "Personal", hue: 285 },
   ];
-  const t = (title, listId, askedBy = "", due = "", notes = "") => ({ id: uid("tk"), title, listId, askedBy, due, notes, done: false, createdAt: now, doneAt: null });
-  const tasks = [
-    t("Call the supplier about the delayed gas cylinders", EASY_GAZ, "Manager", today, "Example: write down who asked, so you know who to report back to."),
-    t("Send the weekly stock count", EASY_GAZ, "Manager", addDays(today, 2)),
-    t("Check the pump invoices before they go out", EASY_GAZ, "", addDays(today, 4)),
-    t("Buy groceries", "list_personal"),
-  ];
-  return { lists, tasks };
+  return { lists, tasks: [] };
 }

@@ -38,31 +38,3 @@ export function reminders(data) {
     ...data.principles.map((p) => ({ id: p.id, label: "Principle", title: p.title, body: p.why, hue: categoryInfo(p.category).hue })),
   ];
 }
-
-/** A few examples to start from; edit or delete them freely. */
-export function seedValues() {
-  const now = Date.now();
-  const v = (title, category, meaning) => ({ id: uid("vl"), title, category, meaning, createdAt: now });
-  const values = [
-    v("Honesty", "character", "Say what is true, kindly. Don’t promise what I won’t do."),
-    v("Kindness", "people", "Assume good intent and leave people better off than I found them."),
-    v("Courage", "character", "Do the right thing even when it is uncomfortable."),
-    v("Family first", "people", "Time and attention for the people closest to me come before status."),
-    v("Always learning", "growth", "Stay curious, ask questions and admit when I am wrong."),
-  ];
-  const id = (t) => values.find((x) => x.title === t).id;
-  const p = (title, category, why, valueId) => ({ id: uid("pr"), title, category, why, valueId });
-  const principles = [
-    p("Keep my word, or say early that I can’t", "character", "Trust is built from small promises kept.", id("Honesty")),
-    p("Listen fully before I answer", "people", "People feel respected when they are heard first.", id("Kindness")),
-    p("Spend less than I earn and give some away", "money", "Money is a tool for a good life, not the goal.", null),
-    p("Sleep, move and rest before I push harder", "body", "I treat people better when I look after myself.", null),
-  ];
-  const r = (kind, title, body, valueId, ago) => ({ id: uid("rf"), kind, title, body, valueId, createdAt: now - ago * 864e5 });
-  const reflections = [
-    r("lived", "Told the client about my mistake", "It was awkward for a minute, then they thanked me for being straight.", id("Honesty"), 2),
-    r("short", "Snapped at my brother", "I was tired and stressed. Apologise tonight and listen next time.", id("Kindness"), 1),
-    r("lesson", "Rest is part of the work", "Tired decisions cost more than the hour I saved.", null, 0),
-  ];
-  return { values, principles, reflections };
-}

@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
-import { seedValues, uid, upsert } from "./model";
+import { uid, upsert } from "./model";
 import { loadValues, saveValues } from "./storage";
 
 const Ctx = createContext(null);
@@ -10,7 +10,7 @@ export const LISTS = { value: ["values", "vl"], principle: ["principles", "pr"],
 
 /** Owns the values, principles and journal. Saved to localStorage shortly after each change and flushed on exit. */
 export default function ValuesProvider({ children }) {
-  const [data, setData] = useState(() => loadValues() ?? seedValues());
+  const [data, setData] = useState(() => loadValues() ?? { values: [], principles: [], reflections: [] });
   const latest = useRef(data);
   latest.current = data;
 
