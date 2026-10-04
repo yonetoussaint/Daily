@@ -1,0 +1,31 @@
+/* Todo app */
+.td-fab { position: fixed; z-index: 25; right: 16px; bottom: calc(16px + env(safe-area-inset-bottom)); }
+.td-page { max-width: var(--content-max); margin: 0 auto; padding: 0 16px 120px; }
+.td-head { padding: 4px 4px 16px; }
+.td-head .display { margin-top: 4px; }
+.td-quick { margin: 0; }
+.td-listbar { display: flex; align-items: center; gap: 8px; margin: 4px 0 8px; padding: 0 4px; }
+.td-listbar .wavy { flex: 1; color: var(--primary); }
+
+.td-group { margin-top: 20px; }
+.td-group h3 { padding: 0 4px 8px; }
+.count { margin-left: 6px; padding: 1px 8px; border-radius: var(--shape-full); background: var(--surface-container-high); }
+.td-list-ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.td-row { display: flex; align-items: stretch; gap: 4px; border-radius: var(--shape-lg); background: var(--surface-container-low); }
+.td-check { flex: none; width: 52px; display: grid; place-items: center; border: 0; background: none; color: var(--acc); cursor: pointer; border-radius: var(--shape-lg); }
+.td-main { flex: 1; min-width: 0; display: grid; gap: 4px; padding: 14px 16px 14px 0; text-align: left; border: 0; background: none; color: inherit; font: inherit; cursor: pointer; border-radius: var(--shape-lg); }
+.td-main .is-done { text-decoration: line-through; color: var(--on-surface-variant); }
+.td-meta { display: flex; flex-wrap: wrap; gap: 4px 12px; }
+.td-list { color: var(--acc); font-weight: 600; }
+.td-who { display: inline-flex; align-items: center; gap: 4px; }
+.td-notes { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.is-late { color: var(--error); font-weight: 600; }
+.td-donebar { display: flex; justify-content: space-between; align-items: center; }
+.td-toggle { min-height: 44px; padding: 0 8px; border: 0; background: none; border-radius: var(--shape-full); cursor: pointer; font: inherit; color: var(--primary); }
+.td-donebar .td-toggle:first-child { color: var(--on-surface-variant); }
+
+.todo-textarea { height: auto; min-height: 96px; padding-top: 28px; resize: vertical; font: inherit; }
+.swatch { display: block; width: 18px; height: 18px; border-radius: var(--shape-full); background: var(--acc); }
+.btn-danger { color: var(--error); margin-right: auto; }
+
+@media (min-width: 840px) { .td-page { padding-top: 8px; } }

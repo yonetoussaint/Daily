@@ -1,6 +1,6 @@
 # Daily
 
-A home to-do app in **Material 3 Expressive**, plus a writing workspace (Docs), a project planner (Projects) and a place for your values and morals (Values), all in the same design system. Apps are opened from the hamburger drawer. React + Vite, Supabase REST for storage.
+A home to-do app in **Material 3 Expressive**, plus a writing workspace (Docs), a project planner (Projects) and a place for your values and morals (Values) and a quick-capture Todo with a list for work (Easy Gaz Plus), all in the same design system. Apps are opened from the hamburger drawer. React + Vite, Supabase REST for storage.
 
 ```
 npm i && npm run dev
@@ -24,6 +24,7 @@ Daily is a single-page app with no router and no URL routes (so no `_redirects` 
 | Values → Values | the things that matter most to you, by area of life, with how often you lived each one |
 | Values → Principles | rules you want to live by (“I listen before I answer”), linked to a value |
 | Values → Journal | days you lived it, fell short, lessons and quotes; a rotating **Today’s reminder** sits on top |
+| Todo | type a task the moment you're told it; lists (Easy Gaz Plus, Personal, your own), who asked, due date, grouped Overdue / Today / Upcoming / No date |
 
 ## Structure
 
@@ -54,6 +55,11 @@ src/
         ├── DocsApp.jsx              picks Library or Editor
         ├── screens/                 LibraryScreen · BookScreen
         └── components/              BookRow · BookSheet · NodeSheet · Outline · formatting (dock + selection pill)
+    ├── todo/
+    │   ├── model.js · storage.js    lists, due-date groups, seed data; localStorage persistence
+    │   ├── TodoProvider.jsx         lists + tasks (debounced save, undoable deletes)
+    │   ├── screens/                 TodoScreen (quick add, list chips, groups)
+    │   └── components/              TaskSheet · ListSheet
     ├── values/
     │   ├── model.js · storage.js    areas, journal types, example data; localStorage persistence
     │   ├── ValuesProvider.jsx       values, principles, journal (debounced save, undoable delete)
