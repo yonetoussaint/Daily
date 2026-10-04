@@ -8,6 +8,22 @@ npm i && npm run dev
 
 Set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` in `.env` to override the defaults.
 
+## Database
+
+Every app stores its data in Supabase. Run **`supabase/schema.sql`** once in the Supabase SQL editor (it is safe to re-run); it creates all tables, indexes and access policies.
+
+| App | Tables |
+| --- | --- |
+| Home tasks | `home_organizer_items` |
+| Todo | `todo_lists`, `todo_tasks` |
+| Docs | `docs_books`, `docs_chapters`, `docs_sections` |
+| Projects | `projects`, `project_milestones`, `project_tasks`, `project_notes` |
+| Values | `life_values`, `life_principles`, `life_reflections` |
+
+How it works: each app loads its rows when opened and saves changes shortly after (only the rows that changed are sent). If saving fails, a snackbar says so and it retries. The first time an app opens on a device, anything it had saved in that browser's localStorage is copied up to the database (the old localStorage copy is left untouched as a backup). The theme choice stays in localStorage on purpose.
+
+The app has no sign-in, so the policies allow the public anon key to read and write — anyone with your project URL and anon key can see this data. Add Supabase Auth and per-user policies before storing anything private.
+
 ## Screens
 
 Daily is a single-page app with no router and no URL routes (so no `_redirects` / `netlify.toml` rewrites are needed). The home screen is a launcher with one tile per app. Navigation is plain React state in `src/app/NavProvider.jsx`; the back arrows only change that state.
@@ -31,6 +47,7 @@ Daily is a single-page app with no router and no URL routes (so no `_redirects` 
 ```
 src/
 ├── main.jsx                  entry point
+├── data/                     database layer: db.js (REST client) · sync.js (diff-based saving, one-time localStorage import) · useStore.js · SyncGate.jsx (loading / retry)
 ├── app/                      app shell: navigation state, drawer, top bar, FAB, theme toggle
 │   ├── App.jsx · NavProvider.jsx · Launcher.jsx · AppShell.jsx · AppShell.css · useTheme.js
 │   ├── apps.jsx                  registry of the apps in the drawer — add new apps here + a case in App.jsx (the launcher picks them up)
@@ -50,24 +67,24 @@ src/
     │   ├── screens/          TasksScreen · RoomsScreen
     │   └── components/       TaskCard · TaskSheet · SummaryCard
     ├── docs/
-        ├── model.js · storage.js    types, word counts, seed data; localStorage persistence
-        ├── DocsProvider.jsx         library state (debounced save, undoable delete)
+        ├── model.js · storage.js    types, word counts, seed data; Supabase tables (see storage.js)
+        ├── DocsProvider.jsx         library state (saved to the database, undoable delete)
         ├── DocsApp.jsx              picks Library or Editor
         ├── screens/                 LibraryScreen · BookScreen
         └── components/              BookRow · BookSheet · NodeSheet · Outline · formatting (dock + selection pill)
     ├── todo/
-    │   ├── model.js · storage.js    lists, due-date groups, seed data; localStorage persistence
-    │   ├── TodoProvider.jsx         lists + tasks (debounced save, undoable deletes)
+    │   ├── model.js · storage.js    lists, due-date groups, seed data; Supabase tables (see storage.js)
+    │   ├── TodoProvider.jsx         lists + tasks (saved to the database, undoable deletes)
     │   ├── screens/                 TodoScreen (quick add, list chips, groups)
     │   └── components/              TaskSheet · ListSheet
     ├── values/
-    │   ├── model.js · storage.js    areas, journal types, example data; localStorage persistence
-    │   ├── ValuesProvider.jsx       values, principles, journal (debounced save, undoable delete)
+    │   ├── model.js · storage.js    areas, journal types, example data; Supabase tables (see storage.js)
+    │   ├── ValuesProvider.jsx       values, principles, journal (saved to the database, undoable delete)
     │   ├── screens/                 ValuesScreen (reminder + three tabs)
     │   └── components/              Tabs · EntrySheet
     └── projects/
-        ├── model.js · storage.js    areas, statuses, Mima seed data; localStorage persistence
-        ├── ProjectsProvider.jsx     all projects (debounced save, undoable delete)
+        ├── model.js · storage.js    areas, statuses, Mima seed data; Supabase tables (see storage.js)
+        ├── ProjectsProvider.jsx     all projects (saved to the database, undoable delete)
         ├── ProjectsApp.jsx          picks the list or one project
         ├── screens/                 ProjectsScreen · ProjectScreen
         └── components/              Tabs (tasks · roadmap · notes) · EntrySheet · ProjectSheet

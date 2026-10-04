@@ -1,32 +1,20 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { createContext, useCallback, useContext, useMemo, useRef } from "react";
 import { blankChapters, uid } from "./model";
-import { loadLibrary, saveLibrary } from "./storage";
+import SyncGate from "../../data/SyncGate";
+import useStore from "../../data/useStore";
+import { docsStore } from "./storage";
 
 const DocsContext = createContext(null);
 export const useDocs = () => useContext(DocsContext);
 
-/** Owns the library of books. Changes are saved to localStorage shortly after, and flushed on exit. */
+const NONE = [];
+
+/** Owns the library of books. Stored in Supabase (docs_books, docs_chapters, docs_sections); changes are saved shortly after and flushed on exit. */
 export default function DocsProvider({ children }) {
-  const [books, setBooks] = useState(() => loadLibrary() ?? []);
+  const [loaded, setBooks, status, reload] = useStore(docsStore);
+  const books = loaded ?? NONE;
   const latest = useRef(books);
   latest.current = books;
-
-  useEffect(() => {
-    const t = setTimeout(() => saveLibrary(books), 300);
-    return () => clearTimeout(t);
-  }, [books]);
-
-  useEffect(() => {
-    const flush = () => saveLibrary(latest.current);
-    const onHide = () => document.visibilityState === "hidden" && flush();
-    window.addEventListener("pagehide", flush);
-    document.addEventListener("visibilitychange", onHide);
-    return () => {
-      window.removeEventListener("pagehide", flush);
-      document.removeEventListener("visibilitychange", onHide);
-      flush();
-    };
-  }, []);
 
   const createBook = useCallback((data) => {
     const now = Date.now();
@@ -71,5 +59,9 @@ export default function DocsProvider({ children }) {
     () => ({ books, createBook, importBooks, updateBook, editChapters, deleteBook, restoreBook }),
     [books, createBook, importBooks, updateBook, editChapters, deleteBook, restoreBook]
   );
-  return <DocsContext.Provider value={value}>{children}</DocsContext.Provider>;
+  return (
+    <DocsContext.Provider value={value}>
+      <SyncGate status={status} onRetry={reload}>{children}</SyncGate>
+    </DocsContext.Provider>
+  );
 }

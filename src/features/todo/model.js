@@ -22,12 +22,3 @@ export function groupOf(task, today = todayIso()) {
 }
 
 export const EASY_GAZ = "list_easygaz";
-
-/** The two starting lists (containers only, no example tasks). */
-export function seedTodo() {
-  const lists = [
-    { id: EASY_GAZ, name: "Easy Gaz Plus", hue: 25 },
-    { id: "list_personal", name: "Personal", hue: 285 },
-  ];
-  return { lists, tasks: [] };
-}

@@ -1,9 +1,5 @@
 // Supabase REST client for the `home_organizer_items` table (id, name, room, priority, checked, created_at).
-// Prefer env vars (VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY); falls back to the original public project.
-const URL_ = import.meta.env.VITE_SUPABASE_URL ?? "https://wkfzhcszhgewkvwukzes.supabase.co";
-const KEY =
-  import.meta.env.VITE_SUPABASE_ANON_KEY ??
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndrZnpoY3N6aGdld2t2d3VremVzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mzg3MDE1NzksImV4cCI6MjA1NDI3NzU3OX0.TzSh8M9NOTnsmVaNxquif4xzSxWaVZp9sePHcjrgCVI";
+import { SUPABASE_KEY as KEY, SUPABASE_URL as URL_ } from "../../data/db";
 const TABLE = `${URL_}/rest/v1/home_organizer_items`;
 const headers = { apikey: KEY, Authorization: `Bearer ${KEY}`, "Content-Type": "application/json" };
 const returning = { ...headers, Prefer: "return=representation" };

@@ -1,6 +1,8 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { createContext, useCallback, useContext, useMemo, useRef } from "react";
 import { uid, upsert } from "./model";
-import { loadValues, saveValues } from "./storage";
+import SyncGate from "../../data/SyncGate";
+import useStore from "../../data/useStore";
+import { valuesStore } from "./storage";
 
 const Ctx = createContext(null);
 export const useValues = () => useContext(Ctx);
@@ -8,28 +10,14 @@ export const useValues = () => useContext(Ctx);
 /** The three lists and the id prefix of each. */
 export const LISTS = { value: ["values", "vl"], principle: ["principles", "pr"], reflection: ["reflections", "rf"] };
 
-/** Owns the values, principles and journal. Saved to localStorage shortly after each change and flushed on exit. */
+const EMPTY = { values: [], principles: [], reflections: [] };
+
+/** Owns the values, principles and journal. Stored in Supabase (life_values, life_principles, life_reflections); changes are saved shortly after and flushed on exit. */
 export default function ValuesProvider({ children }) {
-  const [data, setData] = useState(() => loadValues() ?? { values: [], principles: [], reflections: [] });
+  const [loaded, setData, status, reload] = useStore(valuesStore);
+  const data = loaded ?? EMPTY;
   const latest = useRef(data);
   latest.current = data;
-
-  useEffect(() => {
-    const t = setTimeout(() => saveValues(data), 300);
-    return () => clearTimeout(t);
-  }, [data]);
-
-  useEffect(() => {
-    const flush = () => saveValues(latest.current);
-    const onHide = () => document.visibilityState === "hidden" && flush();
-    window.addEventListener("pagehide", flush);
-    document.addEventListener("visibilitychange", onHide);
-    return () => {
-      window.removeEventListener("pagehide", flush);
-      document.removeEventListener("visibilitychange", onHide);
-      flush();
-    };
-  }, []);
 
   /** Add a new item, or replace the one with the same id. */
   const save = useCallback((kind, item) => {
@@ -56,5 +44,9 @@ export default function ValuesProvider({ children }) {
   }, []);
 
   const value = useMemo(() => ({ ...data, save, remove, restore }), [data, save, remove, restore]);
-  return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
+  return (
+    <Ctx.Provider value={value}>
+      <SyncGate status={status} onRetry={reload}>{children}</SyncGate>
+    </Ctx.Provider>
+  );
 }

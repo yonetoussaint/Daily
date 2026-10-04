@@ -1,32 +1,20 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { createContext, useCallback, useContext, useMemo, useRef } from "react";
 import { uid } from "./model";
-import { loadProjects, saveProjects } from "./storage";
+import SyncGate from "../../data/SyncGate";
+import useStore from "../../data/useStore";
+import { projectsStore } from "./storage";
 
 const Ctx = createContext(null);
 export const useProjects = () => useContext(Ctx);
 
-/** Owns every project. Saved to localStorage shortly after each change and flushed on exit. */
+const NONE = [];
+
+/** Owns every project. Stored in Supabase (projects, project_milestones, project_tasks, project_notes); changes are saved shortly after and flushed on exit. */
 export default function ProjectsProvider({ children }) {
-  const [projects, setProjects] = useState(() => loadProjects() ?? []);
+  const [loaded, setProjects, status, reload] = useStore(projectsStore);
+  const projects = loaded ?? NONE;
   const latest = useRef(projects);
   latest.current = projects;
-
-  useEffect(() => {
-    const t = setTimeout(() => saveProjects(projects), 300);
-    return () => clearTimeout(t);
-  }, [projects]);
-
-  useEffect(() => {
-    const flush = () => saveProjects(latest.current);
-    const onHide = () => document.visibilityState === "hidden" && flush();
-    window.addEventListener("pagehide", flush);
-    document.addEventListener("visibilitychange", onHide);
-    return () => {
-      window.removeEventListener("pagehide", flush);
-      document.removeEventListener("visibilitychange", onHide);
-      flush();
-    };
-  }, []);
 
   const createProject = useCallback((data) => {
     const now = Date.now();
@@ -56,5 +44,9 @@ export default function ProjectsProvider({ children }) {
   }, []);
 
   const value = useMemo(() => ({ projects, createProject, edit, deleteProject, restoreProject }), [projects, createProject, edit, deleteProject, restoreProject]);
-  return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
+  return (
+    <Ctx.Provider value={value}>
+      <SyncGate status={status} onRetry={reload}>{children}</SyncGate>
+    </Ctx.Provider>
+  );
 }

@@ -1,32 +1,20 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
-import { seedTodo, uid } from "./model";
-import { loadTodo, saveTodo } from "./storage";
+import { createContext, useCallback, useContext, useMemo, useRef } from "react";
+import SyncGate from "../../data/SyncGate";
+import useStore from "../../data/useStore";
+import { uid } from "./model";
+import { todoStore } from "./storage";
 
 const Ctx = createContext(null);
 export const useTodo = () => useContext(Ctx);
 
-/** Owns the lists and tasks. Saved to localStorage shortly after each change and flushed on exit. */
+const EMPTY = { lists: [], tasks: [] };
+
+/** Owns the lists and tasks. Stored in Supabase (todo_lists, todo_tasks); changes are saved shortly after and flushed on exit. */
 export default function TodoProvider({ children }) {
-  const [data, setData] = useState(() => loadTodo() ?? seedTodo());
+  const [loaded, setData, status, reload] = useStore(todoStore);
+  const data = loaded ?? EMPTY;
   const latest = useRef(data);
   latest.current = data;
-
-  useEffect(() => {
-    const t = setTimeout(() => saveTodo(data), 300);
-    return () => clearTimeout(t);
-  }, [data]);
-
-  useEffect(() => {
-    const flush = () => saveTodo(latest.current);
-    const onHide = () => document.visibilityState === "hidden" && flush();
-    window.addEventListener("pagehide", flush);
-    document.addEventListener("visibilitychange", onHide);
-    return () => {
-      window.removeEventListener("pagehide", flush);
-      document.removeEventListener("visibilitychange", onHide);
-      flush();
-    };
-  }, []);
 
   /** Add a task (no id) or replace one (same id). */
   const saveTask = useCallback((task) => {
@@ -93,5 +81,9 @@ export default function TodoProvider({ children }) {
     () => ({ ...data, saveTask, toggle, removeTask, restoreTask, clearDone, restoreMany, saveList, removeList, restoreList }),
     [data, saveTask, toggle, removeTask, restoreTask, clearDone, restoreMany, saveList, removeList, restoreList]
   );
-  return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
+  return (
+    <Ctx.Provider value={value}>
+      <SyncGate status={status} onRetry={reload}>{children}</SyncGate>
+    </Ctx.Provider>
+  );
 }
