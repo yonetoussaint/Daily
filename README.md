@@ -10,7 +10,7 @@ Set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` in `.env` to override the d
 
 ## Screens
 
-Daily is a single-page app on one URL. The home screen is a launcher with one tile per app. Navigation lives in `src/app/NavProvider.jsx` and uses `history.state`, so the system / browser back button steps back (doc → library → home) and a reload restores the current view.
+Daily is a single-page app with no router and no URL routes (so no `_redirects` / `netlify.toml` rewrites are needed). The home screen is a launcher with one tile per app. Navigation is plain React state in `src/app/NavProvider.jsx`; the back arrows only change that state.
 
 | View | What it is |
 | --- | --- |
