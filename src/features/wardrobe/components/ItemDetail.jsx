@@ -1,6 +1,8 @@
 import { ArrowLeft, Pencil, Trash2 } from "lucide-react";
 import { Button, Chip, IconButton, TopAppBar } from "../../../design/components";
 import { catMeta, seasonLabel } from "../model";
+import { itemImages } from "../image";
+import Gallery from "./Gallery";
 
 const fmtAdded = (ms) => (ms ? new Date(ms).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }) : "");
 
@@ -23,9 +25,7 @@ export default function ItemDetail({ item, onBack, onEdit, onDelete }) {
         actions={<IconButton label="Edit item" onClick={onEdit}><Pencil size={22} /></IconButton>}
       />
       <main className="wd-page wd-detail">
-        <div className="wd-detail-photo">
-          {item.image && <img src={item.image} alt={item.name} decoding="async" />}
-        </div>
+        <Gallery images={itemImages(item)} alt={item.name} />
 
         <header className="wd-detail-head">
           {item.brand && <p className="wd-brand label-md">{item.brand}</p>}

@@ -2,12 +2,13 @@ import { useMemo, useState } from "react";
 import { ClipboardCopy, Download } from "lucide-react";
 import { Button, Chip, Sheet, useSnackbar } from "../../../design/components";
 import { exportJson } from "../importer";
+import { itemImages } from "../image";
 
 /** Shows the wardrobe as JSON to copy or download. Mounted only while open. */
 export default function ExportSheet({ items, onClose }) {
   const snackbar = useSnackbar();
   const [photos, setPhotos] = useState(false);
-  const withPhotos = items.filter((i) => i.image).length;
+  const withPhotos = items.reduce((n, i) => n + itemImages(i).length, 0);
   const json = useMemo(() => exportJson(items, { photos }), [items, photos]);
 
   const copy = async () => {

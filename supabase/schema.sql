@@ -200,6 +200,8 @@ create table if not exists public.wardrobe_items (
 );
 -- Photo: a small JPEG data URL (made in the app) or an https link.
 alter table public.wardrobe_items add column if not exists image text not null default '';
+-- Gallery: every photo of the item, cover first (the `image` column keeps a copy of the cover).
+alter table public.wardrobe_items add column if not exists images jsonb not null default '[]'::jsonb;
 create index if not exists wardrobe_items_category_idx on public.wardrobe_items (category);
 
 -- ── Outfits ────────────────────────────────────────────────────────────────

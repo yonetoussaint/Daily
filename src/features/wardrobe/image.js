@@ -5,6 +5,15 @@ export const MAX_IMAGE_CHARS = 400_000;
 
 export const isImageValue = (v) => typeof v === "string" && v.length <= MAX_IMAGE_CHARS && (/^data:image\/(png|jpe?g|webp|gif);base64,/i.test(v) || /^https:\/\/\S+$/i.test(v));
 
+export const MAX_IMAGES = 8;
+
+/** All photos of an item, cover first. Older items only have a single `image`. */
+export const itemImages = (item) => {
+  const list = Array.isArray(item?.images) ? item.images.filter(isImageValue) : [];
+  if (list.length) return list.slice(0, MAX_IMAGES);
+  return item?.image && isImageValue(item.image) ? [item.image] : [];
+};
+
 /** File → downscaled JPEG data URL. Rejects if the file isn't a readable image. */
 export function fileToThumb(file) {
   return new Promise((resolve, reject) => {

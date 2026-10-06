@@ -56,4 +56,4 @@ export function normalizeSeason(raw) {
   return "all";
 }
 
-export const EMPTY_ITEM = { name: "", category: "T-Shirts", color: "", brand: "", size: "", season: "all", notes: "", image: "" };
+export const EMPTY_ITEM = { name: "", category: "T-Shirts", color: "", brand: "", size: "", season: "all", notes: "", image: "", images: [] };

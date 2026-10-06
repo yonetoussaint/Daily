@@ -1,53 +1,71 @@
 import { useRef, useState } from "react";
-import { Camera, Trash2 } from "lucide-react";
+import { Camera, Plus, Star, X } from "lucide-react";
 import { Button, Chip, Sheet, TextField, useSnackbar } from "../../../design/components";
-import { fileToThumb } from "../image";
+import { fileToThumb, itemImages, MAX_IMAGES } from "../image";
 import { CATEGORIES, EMPTY_ITEM, SEASONS } from "../model";
 
 /** Add / edit a piece of clothing. Mounted only while open, so the form always starts fresh. */
 export default function ItemSheet({ item, defaultCategory, onClose, onSave, onDelete }) {
-  const [f, setF] = useState(() => ({ ...EMPTY_ITEM, category: defaultCategory ?? EMPTY_ITEM.category, ...item }));
+  const [f, setF] = useState(() => ({ ...EMPTY_ITEM, category: defaultCategory ?? EMPTY_ITEM.category, ...item, images: itemImages(item) }));
   const snackbar = useSnackbar();
   const fileRef = useRef(null);
   const [busy, setBusy] = useState(false);
   const set = (patch) => setF((s) => ({ ...s, ...patch }));
 
   const pick = async (e) => {
-    const file = e.target.files?.[0];
+    const files = [...(e.target.files ?? [])];
     e.target.value = "";
-    if (!file) return;
+    if (!files.length) return;
+    const room = MAX_IMAGES - f.images.length;
+    if (room <= 0) return snackbar.show({ message: `Up to ${MAX_IMAGES} photos per item.` });
     setBusy(true);
     try {
-      set({ image: await fileToThumb(file) });
-    } catch (err) {
-      snackbar.show({ message: err.message });
+      const added = [];
+      let failed = 0;
+      for (const file of files.slice(0, room)) {
+        try { added.push(await fileToThumb(file)); } catch { failed += 1; }
+      }
+      if (added.length) setF((s) => ({ ...s, images: [...s.images, ...added].slice(0, MAX_IMAGES) }));
+      if (failed) snackbar.show({ message: `${failed} file${failed === 1 ? "" : "s"} couldn’t be read as an image.` });
+      else if (files.length > room) snackbar.show({ message: `Only the first ${room} were added (limit ${MAX_IMAGES}).` });
     } finally {
       setBusy(false);
     }
   };
+  const removeAt = (n) => set({ images: f.images.filter((_, k) => k !== n) });
+  const makeCover = (n) => set({ images: [f.images[n], ...f.images.filter((_, k) => k !== n)] });
 
   const submit = (e) => {
     e.preventDefault();
     const name = f.name.trim();
     if (!name) return;
-    onSave({ ...item, name, category: f.category, color: f.color.trim(), brand: f.brand.trim(), size: f.size.trim(), season: f.season, notes: f.notes.trim(), image: f.image ?? "" });
+    onSave({ ...item, name, category: f.category, color: f.color.trim(), brand: f.brand.trim(), size: f.size.trim(), season: f.season, notes: f.notes.trim(), images: f.images, image: f.images[0] ?? "" });
   };
 
   return (
     <Sheet title={item ? "Edit item" : "New item"} onClose={onClose}>
       <form onSubmit={submit} className="sheet-form">
-        <div className="wd-photo">
-          <button type="button" className="wd-photo-box state" onClick={() => fileRef.current?.click()} aria-label={f.image ? "Change photo" : "Add photo"}>
-            {f.image ? <img src={f.image} alt="" /> : <span className="wd-photo-empty"><Camera size={28} /><span className="label-lg">{busy ? "Processing…" : "Add photo"}</span></span>}
-          </button>
-          <input ref={fileRef} type="file" accept="image/*" hidden onChange={pick} />
-          {f.image && (
-            <div className="wd-photo-actions">
-              <Button variant="tonal" icon={<Camera size={18} />} onClick={() => fileRef.current?.click()}>{busy ? "Processing…" : "Change"}</Button>
-              <Button variant="text" icon={<Trash2 size={18} />} onClick={() => set({ image: "" })}>Remove</Button>
-            </div>
-          )}
-        </div>
+        <fieldset className="sheet-section">
+          <legend className="label-lg muted">Photos <span className="wd-count">{f.images.length}/{MAX_IMAGES}</span></legend>
+          <ul className="wd-photo-grid">
+            {f.images.map((src, n) => (
+              <li key={src.slice(-40) + n} className="wd-photo-tile">
+                <img src={src} alt={`Photo ${n + 1}`} />
+                {n === 0 && <span className="wd-photo-cover label-md">Cover</span>}
+                <button type="button" className="wd-photo-x state" aria-label={`Remove photo ${n + 1}`} onClick={() => removeAt(n)}><X size={16} /></button>
+                {n > 0 && <button type="button" className="wd-photo-star state" aria-label={`Make photo ${n + 1} the cover`} onClick={() => makeCover(n)}><Star size={16} /></button>}
+              </li>
+            ))}
+            {f.images.length < MAX_IMAGES && (
+              <li>
+                <button type="button" className="wd-photo-add state" onClick={() => fileRef.current?.click()} aria-label="Add photos">
+                  {busy ? <span className="label-lg">Processing…</span> : f.images.length ? <Plus size={28} /> : <span className="wd-photo-empty"><Camera size={28} /><span className="label-lg">Add photos</span></span>}
+                </button>
+              </li>
+            )}
+          </ul>
+          <input ref={fileRef} type="file" accept="image/*" multiple hidden onChange={pick} />
+        </fieldset>
 
         <TextField label="Name" value={f.name} onChange={(e) => set({ name: e.target.value })} autoFocus maxLength={120} autoComplete="off" />
 

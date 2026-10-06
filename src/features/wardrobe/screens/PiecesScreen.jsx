@@ -1,6 +1,7 @@
-import { Search, Shirt } from "lucide-react";
+import { Images, Search, Shirt } from "lucide-react";
 import { Button, Chip, EmptyState, TextField } from "../../../design/components";
 import { CATEGORIES, catMeta, seasonLabel } from "../model";
+import { itemImages } from "../image";
 
 const meta = (i) => [i.color, i.brand, i.size && `Size ${i.size}`, i.season !== "all" && seasonLabel(i.season)].filter(Boolean);
 
@@ -77,7 +78,8 @@ export default function PiecesScreen({ items, counts, cat, onCat, query, onQuery
                   <li key={i.id}>
                     <button className="wd-card state" onClick={() => onOpen(i)}>
                       <span className="wd-thumb">
-                        {i.image && <img src={i.image} alt={i.name} decoding="async" />}
+                        {itemImages(i)[0] && <img src={itemImages(i)[0]} alt={i.name} decoding="async" />}
+                        {itemImages(i).length > 1 && <span className="wd-badge label-md" aria-label={`${itemImages(i).length} photos`}><Images size={13} aria-hidden="true" /> {itemImages(i).length}</span>}
                       </span>
                       <span className="wd-cap">
                         {i.brand && <span className="wd-brand label-md">{i.brand}</span>}
@@ -94,7 +96,7 @@ export default function PiecesScreen({ items, counts, cat, onCat, query, onQuery
               {g.rows.map((i) => (
                 <li key={i.id} className="acc" style={{ "--hue": g.hue }}>
                   <button className="wd-row state" onClick={() => onOpen(i)}>
-                    <span className="wd-icon">{i.image && <img src={i.image} alt="" decoding="async" />}</span>
+                    <span className="wd-icon">{itemImages(i)[0] && <img src={itemImages(i)[0]} alt="" decoding="async" />}</span>
                     <span className="wd-main">
                       <span className="title-md">{i.name}</span>
                       {meta(i).length > 0 && <span className="body-md muted wd-meta">{meta(i).join(" · ")}</span>}

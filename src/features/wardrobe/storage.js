@@ -1,5 +1,6 @@
 import { createStore, ms, ts } from "../../data/sync";
 import { normalizeCategory } from "./model";
+import { itemImages } from "./image";
 
 /** Table: wardrobe_items (see supabase/schema.sql). */
 export const wardrobeStore = createStore({
@@ -15,7 +16,8 @@ export const wardrobeStore = createStore({
       size: i.size ?? "",
       season: i.season ?? "all",
       notes: i.notes ?? "",
-      image: i.image ?? "",
+      image: itemImages(i)[0] ?? "", // the cover; Outfits reads this
+      images: itemImages(i),
       created_at: ts(i.createdAt),
     })),
   }),
@@ -29,7 +31,8 @@ export const wardrobeStore = createStore({
       size: i.size ?? "",
       season: i.season ?? "all",
       notes: i.notes ?? "",
-      image: i.image ?? "",
+      image: itemImages(i)[0] ?? "",
+      images: itemImages(i),
       createdAt: ms(i.created_at),
     })),
   }),
