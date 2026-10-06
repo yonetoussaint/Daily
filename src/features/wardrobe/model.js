@@ -42,4 +42,4 @@ export function normalizeSeason(raw) {
   return "all";
 }
 
-export const EMPTY_ITEM = { name: "", category: "Tops", color: "", brand: "", size: "", season: "all", notes: "" };
+export const EMPTY_ITEM = { name: "", category: "Tops", color: "", brand: "", size: "", season: "all", notes: "", image: "" };

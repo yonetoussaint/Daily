@@ -41,7 +41,7 @@ Daily is a single-page app with no router and no URL routes (so no `_redirects` 
 | Values → Values | the things that matter most to you, by area of life, with how often you lived each one |
 | Values → Principles | rules you want to live by (“I listen before I answer”), linked to a value |
 | Values → Journal | days you lived it, fell short, lessons and quotes; a rotating **Today’s reminder** sits on top |
-| Wardrobe | every piece of clothing by category (tops, bottoms, shoes…), search, and **Import / Export JSON** (paste or load a file; an AI prompt is built in) |
+| Wardrobe | every piece of clothing by category (tops, bottoms, shoes…), search, and item photos (grid or list view), and **Import / Export JSON** (paste or load a file; an AI prompt is built in) |
 | Todo | type a task the moment you're told it; lists (Easy Gaz Plus, Personal, your own), who asked, due date, grouped Overdue / Today / Upcoming / No date |
 
 ## Structure

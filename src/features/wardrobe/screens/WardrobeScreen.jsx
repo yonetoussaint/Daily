@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Download, FileUp, Menu, Moon, Plus, Search, Shirt, Sun, SunMoon } from "lucide-react";
+import { Download, FileUp, LayoutGrid, List, Menu, Moon, Plus, Search, Shirt, Sun, SunMoon } from "lucide-react";
 import { Chip, EmptyState, Fab, IconButton, TextField, TopAppBar, useScrollingDown, useSnackbar } from "../../../design/components";
 import { useDrawer } from "../../../app/DrawerProvider";
 import { useTheme } from "../../../app/useTheme";
@@ -19,6 +19,7 @@ export default function WardrobeScreen() {
   const { items, saveItem, removeItem, restoreItem, importItems, restoreAll } = useWardrobe();
   const [cat, setCat] = useState("all");
   const [query, setQuery] = useState("");
+  const [view, setView] = useState(() => { try { return localStorage.getItem("wardrobe-view") === "list" ? "list" : "grid"; } catch { return "grid"; } });
   const [sheet, setSheet] = useState(null); // { kind: "item", item? } | { kind: "import" } | { kind: "export" }
   const ThemeIcon = THEME_ICON[theme.mode];
 
@@ -56,6 +57,8 @@ export default function WardrobeScreen() {
     snackbar.show({ message: `Imported: ${parts.join(", ")}`, actionLabel: "Undo", onAction: () => restoreAll(undo) });
   };
 
+  const toggleView = () => setView((v) => { const n = v === "grid" ? "list" : "grid"; try { localStorage.setItem("wardrobe-view", n); } catch { /* storage unavailable */ } return n; });
+
   const meta = (i) => [i.color, i.brand, i.size && `Size ${i.size}`, i.season !== "all" && seasonLabel(i.season)].filter(Boolean);
 
   return (
@@ -65,6 +68,7 @@ export default function WardrobeScreen() {
         leading={<IconButton label="Open menu" onClick={drawer.open}><Menu size={24} /></IconButton>}
         actions={
           <>
+            <IconButton label={view === "grid" ? "Switch to list" : "Switch to photo grid"} onClick={toggleView}>{view === "grid" ? <List size={22} /> : <LayoutGrid size={22} />}</IconButton>
             <IconButton label="Import JSON" onClick={() => setSheet({ kind: "import" })}><FileUp size={22} /></IconButton>
             <IconButton label="Export JSON" onClick={() => setSheet({ kind: "export" })} disabled={!items.length}><Download size={22} /></IconButton>
             <IconButton label={`Theme: ${theme.mode}. Switch to ${theme.next}`} onClick={theme.cycle}><ThemeIcon size={22} /></IconButton>
@@ -116,20 +120,36 @@ export default function WardrobeScreen() {
           return (
             <section key={g.name} className="wd-group" aria-label={g.name}>
               {activeCat === "all" && <h3 className="label-lg muted">{g.name} <span className="wd-count">{g.rows.length}</span></h3>}
-              <ul className="wd-ul">
-                {g.rows.map((i) => (
-                  <li key={i.id} className="acc" style={{ "--hue": g.hue }}>
-                    <button className="wd-row state" onClick={() => setSheet({ kind: "item", item: i })}>
-                      <span className="wd-icon"><Icon size={22} /></span>
-                      <span className="wd-main">
-                        <span className="title-md">{i.name}</span>
-                        {meta(i).length > 0 && <span className="body-md muted wd-meta">{meta(i).join(" · ")}</span>}
-                        {i.notes && <span className="body-md muted wd-notes">{i.notes}</span>}
-                      </span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
+              {view === "grid" ? (
+                <ul className="wd-grid">
+                  {g.rows.map((i) => (
+                    <li key={i.id} className="acc" style={{ "--hue": g.hue }}>
+                      <button className="wd-card state" onClick={() => setSheet({ kind: "item", item: i })}>
+                        <span className="wd-thumb">{i.image ? <img src={i.image} alt="" loading="lazy" /> : <Icon size={40} />}</span>
+                        <span className="wd-cap">
+                          <span className="title-md wd-name">{i.name}</span>
+                          {meta(i).length > 0 && <span className="body-md muted wd-meta">{meta(i).join(" · ")}</span>}
+                        </span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <ul className="wd-ul">
+                  {g.rows.map((i) => (
+                    <li key={i.id} className="acc" style={{ "--hue": g.hue }}>
+                      <button className="wd-row state" onClick={() => setSheet({ kind: "item", item: i })}>
+                        <span className="wd-icon">{i.image ? <img src={i.image} alt="" loading="lazy" /> : <Icon size={22} />}</span>
+                        <span className="wd-main">
+                          <span className="title-md">{i.name}</span>
+                          {meta(i).length > 0 && <span className="body-md muted wd-meta">{meta(i).join(" · ")}</span>}
+                          {i.notes && <span className="body-md muted wd-notes">{i.notes}</span>}
+                        </span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </section>
           );
         })}

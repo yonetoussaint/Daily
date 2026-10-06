@@ -44,7 +44,7 @@ export default function ImportSheet({ onClose, onImport }) {
     <Sheet title="Import from JSON" onClose={onClose}>
       <form onSubmit={submit} className="sheet-form">
         <p className="body-md muted">
-          Paste a list of clothes as JSON. Items with an <code>id</code> that already exists are updated; everything else is added. You can ask an AI to write it from a list or photo of your clothes.
+          Paste a list of clothes as JSON (an item can have an <code>image</code>: an https link or a photo exported from here). Items with an <code>id</code> that already exists are updated; everything else is added. You can ask an AI to write it from a list or photo of your clothes.
         </p>
 
         <div className="chip-wrap">

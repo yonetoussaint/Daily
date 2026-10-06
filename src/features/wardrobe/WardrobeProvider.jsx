@@ -60,7 +60,7 @@ export default function WardrobeProvider({ children }) {
     });
     setData((d) => ({
       ...d,
-      items: [...fresh, ...d.items.map((x) => (updates.has(x.id) ? { ...x, ...updates.get(x.id), id: x.id, createdAt: x.createdAt } : x))],
+      items: [...fresh, ...d.items.map((x) => (updates.has(x.id) ? { ...x, ...updates.get(x.id), image: updates.get(x.id).image || x.image, id: x.id, createdAt: x.createdAt } : x))],
     }));
     return { added: fresh.length, updated: updates.size, undo: before };
   }, []);

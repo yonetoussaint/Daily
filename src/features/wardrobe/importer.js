@@ -1,3 +1,4 @@
+import { isImageValue } from "./image";
 import { EMPTY_ITEM, normalizeCategory, normalizeSeason } from "./model";
 
 /* ── JSON import / export ────────────────────────────────────────────────────
@@ -25,12 +26,13 @@ Reply with ONLY valid JSON (no markdown code fences, no commentary) in exactly t
 
 {
   "items": [
-    { "name": "White oxford shirt", "category": "Tops", "color": "White", "brand": "Uniqlo", "size": "M", "season": "all", "notes": "" }
+    { "name": "White oxford shirt", "category": "Tops", "color": "White", "brand": "Uniqlo", "size": "M", "season": "all", "notes": "", "image": "https://…/shirt.jpg" }
   ]
 }
 
 Rules:
 - "name" is required. Everything else is optional.
+- "image" is optional: a public https:// link to a photo of the item (leave it out if you don't have one).
 - "category" is one of: Tops, Bottoms, Outerwear, Dresses, Shoes, Accessories, Activewear, Sleep & Under, Other.
 - "season" is one of: "all", "warm", "cold".
 - One object per piece of clothing. Do not combine several pieces into one item.
@@ -60,6 +62,7 @@ export function cleanItem(raw) {
     size: text(raw.size, LIMITS.size),
     season: normalizeSeason(raw.season),
     notes,
+    image: isImageValue(first(raw, ["image", "photo", "imageUrl"])) ? first(raw, ["image", "photo", "imageUrl"]) : "",
   };
   const id = typeof raw.id === "string" ? raw.id.trim().slice(0, 60) : "";
   if (id) item.id = id;
@@ -90,7 +93,7 @@ export function parseWardrobeJson(input) {
 }
 
 /** The wardrobe as JSON text, in the same shape the importer reads (so it round-trips). */
-export function exportJson(items) {
-  const rows = items.map(({ id, name, category, color, brand, size, season, notes }) => ({ id, name, category, color, brand, size, season, notes }));
+export function exportJson(items, { photos = false } = {}) {
+  const rows = items.map(({ id, name, category, color, brand, size, season, notes, image }) => ({ id, name, category, color, brand, size, season, notes, ...(photos && image ? { image } : {}) }));
   return JSON.stringify({ items: rows }, null, 2);
 }

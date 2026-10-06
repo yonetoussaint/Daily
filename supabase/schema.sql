@@ -176,6 +176,8 @@ create table if not exists public.wardrobe_items (
   notes      text not null default '',
   created_at timestamptz default now()
 );
+-- Photo: a small JPEG data URL (made in the app) or an https link.
+alter table public.wardrobe_items add column if not exists image text not null default '';
 create index if not exists wardrobe_items_category_idx on public.wardrobe_items (category);
 
 -- ── Access (no sign-in: the anon key may read and write) ──────────────────
