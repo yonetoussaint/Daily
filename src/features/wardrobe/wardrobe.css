@@ -1,0 +1,25 @@
+/* Wardrobe app */
+.wd-fab { position: fixed; z-index: 25; right: 16px; bottom: calc(16px + env(safe-area-inset-bottom)); }
+.wd-page { max-width: var(--content-max); margin: 0 auto; padding: 0 16px 120px; }
+.wd-head { padding: 4px 4px 16px; }
+.wd-head .display { margin-top: 4px; }
+
+.wd-group { margin-top: 20px; }
+.wd-group h3 { padding: 0 4px 8px; }
+.wd-ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.wd-row { width: 100%; display: flex; align-items: center; gap: 14px; padding: 12px 16px 12px 12px; text-align: left; border: 0; border-radius: var(--shape-lg); background: var(--surface-container-low); color: inherit; font: inherit; cursor: pointer; }
+.wd-icon { flex: none; width: 44px; height: 44px; display: grid; place-items: center; border-radius: var(--shape-md); background: color-mix(in oklch, var(--acc) 22%, var(--surface-container-low)); color: var(--acc); }
+.wd-main { flex: 1; min-width: 0; display: grid; gap: 2px; }
+.wd-main .title-md { overflow-wrap: anywhere; }
+.wd-notes { display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
+.wd-link { min-height: 44px; padding: 0 16px; border: 0; background: none; border-radius: var(--shape-full); cursor: pointer; font: inherit; color: var(--primary); }
+.wd-error { margin: 8px 4px 0; color: var(--error); }
+
+.wd-count { margin-left: 6px; padding: 1px 8px; border-radius: var(--shape-full); background: var(--surface-container-high); }
+.wd-textarea { height: auto; min-height: 96px; padding-top: 28px; resize: vertical; font: inherit; }
+.wd-danger { color: var(--error); margin-right: auto; }
+.wd-json { width: 100%; box-sizing: border-box; min-height: 220px; padding: 12px; border: 1px solid var(--outline-variant); border-radius: var(--shape-md); background: var(--surface-container-lowest, var(--surface)); color: var(--on-surface); font: 13px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; resize: vertical; }
+.wd-json:focus { outline: 0; border-color: var(--primary); }
+.wd-json[aria-invalid="true"] { border-color: var(--error); }
+
+@media (min-width: 840px) { .wd-page { padding-top: 8px; } }

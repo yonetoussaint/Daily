@@ -7,6 +7,7 @@
 --   Docs        docs_books, docs_chapters, docs_sections
 --   Projects    projects, project_milestones, project_tasks, project_notes
 --   Values      life_values, life_principles, life_reflections
+--   Wardrobe    wardrobe_items
 --
 -- The app has no sign-in (it talks to Supabase with the public anon key), so the
 -- policies at the bottom let the anon role read and write. Anyone who has your
@@ -163,6 +164,20 @@ create table if not exists public.life_reflections (
 );
 create index if not exists life_reflections_value_idx on public.life_reflections (value_id);
 
+-- ── Wardrobe ───────────────────────────────────────────────────────────────
+create table if not exists public.wardrobe_items (
+  id         text primary key,
+  name       text not null,
+  category   text not null default 'Other',         -- Tops | Bottoms | Outerwear | Dresses | Shoes | Accessories | Activewear | Sleep & Under | Other
+  color      text not null default '',
+  brand      text not null default '',
+  size       text not null default '',
+  season     text not null default 'all',           -- all | warm | cold
+  notes      text not null default '',
+  created_at timestamptz default now()
+);
+create index if not exists wardrobe_items_category_idx on public.wardrobe_items (category);
+
 -- ── Access (no sign-in: the anon key may read and write) ──────────────────
 do $$
 declare
@@ -173,7 +188,8 @@ begin
     'todo_lists', 'todo_tasks',
     'docs_books', 'docs_chapters', 'docs_sections',
     'projects', 'project_milestones', 'project_tasks', 'project_notes',
-    'life_values', 'life_principles', 'life_reflections'
+    'life_values', 'life_principles', 'life_reflections',
+    'wardrobe_items'
   ]
   loop
     execute format('alter table public.%I enable row level security', t);

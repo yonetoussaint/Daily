@@ -3,6 +3,7 @@ import { DocsApp } from "../features/docs";
 import { ProjectsApp } from "../features/projects";
 import { TodoApp } from "../features/todo";
 import { ValuesApp } from "../features/values";
+import { WardrobeApp } from "../features/wardrobe";
 import AppShell from "./AppShell";
 import DrawerProvider from "./DrawerProvider";
 import Launcher from "./Launcher";
@@ -14,6 +15,7 @@ function Current() {
   if (app === "projects") return <ProjectsApp />;
   if (app === "todo") return <TodoApp />;
   if (app === "values") return <ValuesApp />;
+  if (app === "wardrobe") return <WardrobeApp />;
   if (app === "tasks") return <AppShell />;
   return <Launcher />;
 }
