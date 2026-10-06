@@ -1,5 +1,6 @@
 import { SnackbarProvider } from "../design/components";
 import { DocsApp } from "../features/docs";
+import { OutfitsApp } from "../features/outfits";
 import { ProjectsApp } from "../features/projects";
 import { TodoApp } from "../features/todo";
 import { ValuesApp } from "../features/values";
@@ -16,6 +17,7 @@ function Current() {
   if (app === "todo") return <TodoApp />;
   if (app === "values") return <ValuesApp />;
   if (app === "wardrobe") return <WardrobeApp />;
+  if (app === "outfits") return <OutfitsApp />;
   if (app === "tasks") return <AppShell />;
   return <Launcher />;
 }

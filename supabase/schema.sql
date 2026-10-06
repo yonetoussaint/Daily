@@ -8,6 +8,7 @@
 --   Projects    projects, project_milestones, project_tasks, project_notes
 --   Values      life_values, life_principles, life_reflections
 --   Wardrobe    wardrobe_items
+--   Outfits     outfits, outfit_items (links to wardrobe_items)
 --
 -- The app has no sign-in (it talks to Supabase with the public anon key), so the
 -- policies at the bottom let the anon role read and write. Anyone who has your
@@ -180,6 +181,39 @@ create table if not exists public.wardrobe_items (
 alter table public.wardrobe_items add column if not exists image text not null default '';
 create index if not exists wardrobe_items_category_idx on public.wardrobe_items (category);
 
+-- ── Outfits ────────────────────────────────────────────────────────────────
+create table if not exists public.outfits (
+  id         text primary key,
+  name       text not null,
+  occasion   text not null default 'casual',        -- casual | work | formal | evening | sport | home | other
+  season     text not null default 'all',           -- all | warm | cold
+  notes      text not null default '',
+  favorite   boolean not null default false,
+  wear_count integer not null default 0,
+  last_worn  timestamptz,
+  created_at timestamptz default now()
+);
+-- One row per piece in an outfit. item_id is a wardrobe_items id (no foreign key, so a
+-- stale browser can never block saving); the trigger below removes links when a piece is deleted.
+create table if not exists public.outfit_items (
+  id         text primary key,                      -- "<outfit id>~<item id>"
+  outfit_id  text not null references public.outfits(id) on delete cascade,
+  item_id    text not null,
+  position   integer not null default 0
+);
+create index if not exists outfit_items_outfit_idx on public.outfit_items (outfit_id);
+create index if not exists outfit_items_item_idx on public.outfit_items (item_id);
+
+create or replace function public.outfit_items_unlink_deleted_piece() returns trigger
+language plpgsql as $$
+begin
+  delete from public.outfit_items where item_id = old.id;
+  return old;
+end $$;
+drop trigger if exists wardrobe_items_unlink on public.wardrobe_items;
+create trigger wardrobe_items_unlink after delete on public.wardrobe_items
+  for each row execute function public.outfit_items_unlink_deleted_piece();
+
 -- ── Access (no sign-in: the anon key may read and write) ──────────────────
 do $$
 declare
@@ -191,7 +225,8 @@ begin
     'docs_books', 'docs_chapters', 'docs_sections',
     'projects', 'project_milestones', 'project_tasks', 'project_notes',
     'life_values', 'life_principles', 'life_reflections',
-    'wardrobe_items'
+    'wardrobe_items',
+    'outfits', 'outfit_items'
   ]
   loop
     execute format('alter table public.%I enable row level security', t);

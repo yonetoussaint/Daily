@@ -20,6 +20,7 @@ Every app stores its data in Supabase. Run **`supabase/schema.sql`** once in the
 | Projects | `projects`, `project_milestones`, `project_tasks`, `project_notes` |
 | Values | `life_values`, `life_principles`, `life_reflections` |
 | Wardrobe | `wardrobe_items` |
+| Outfits | `outfits`, `outfit_items` |
 
 How it works: each app loads its rows when opened and saves changes shortly after (only the rows that changed are sent). If saving fails, a snackbar says so and it retries. The first time an app opens on a device, anything it had saved in that browser's localStorage is copied up to the database (the old localStorage copy is left untouched as a backup). The theme choice stays in localStorage on purpose.
 
