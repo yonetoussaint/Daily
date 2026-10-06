@@ -47,3 +47,17 @@
 .wd-meta { font-size: 13px; color: var(--on-surface-variant); overflow-wrap: anywhere; }
 @media (min-width: 560px) { .wd-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 @media (min-width: 840px) { .wd-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+
+/* Detail screen */
+.wd-detail { max-width: 560px; }
+.wd-detail-photo { position: relative; width: 100%; height: 0; padding-bottom: 125%; overflow: hidden; border-radius: var(--shape-xl, 28px); background: var(--surface-container-high); }
+.wd-detail-photo img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
+.wd-detail-head { padding: 20px 4px 8px; display: grid; gap: 6px; }
+.wd-detail-name { overflow-wrap: anywhere; }
+.wd-facts { margin: 12px 0 0; display: grid; gap: 1px; border-radius: var(--shape-lg); overflow: hidden; background: var(--outline-variant); border: 1px solid var(--outline-variant); }
+.wd-fact { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; padding: 14px 16px; background: var(--surface-container-lowest, var(--surface)); }
+.wd-fact dd { margin: 0; text-align: right; overflow-wrap: anywhere; }
+.wd-detail-notes { margin-top: 20px; padding: 0 4px; }
+.wd-detail-notes p { margin: 6px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.wd-detail-actions { display: flex; gap: 8px; margin-top: 24px; }
+.wd-danger-inline { color: var(--error); }

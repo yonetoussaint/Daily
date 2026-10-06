@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Download, FileUp, LayoutGrid, List, Menu, Moon, Plus, Search, Shirt, Sun, SunMoon } from "lucide-react";
 import { Chip, EmptyState, Fab, IconButton, TextField, TopAppBar, useScrollingDown, useSnackbar } from "../../../design/components";
 import { useDrawer } from "../../../app/DrawerProvider";
@@ -8,6 +8,7 @@ import { CATEGORIES, catMeta, seasonLabel } from "../model";
 import ItemSheet from "../components/ItemSheet";
 import ImportSheet from "../components/ImportSheet";
 import ExportSheet from "../components/ExportSheet";
+import ItemDetail from "../components/ItemDetail";
 
 const THEME_ICON = { auto: SunMoon, light: Sun, dark: Moon };
 
@@ -21,7 +22,14 @@ export default function WardrobeScreen() {
   const [query, setQuery] = useState("");
   const [view, setView] = useState(() => { try { return localStorage.getItem("wardrobe-view") === "list" ? "list" : "grid"; } catch { return "grid"; } });
   const [sheet, setSheet] = useState(null); // { kind: "item", item? } | { kind: "import" } | { kind: "export" }
+  const [detailId, setDetailId] = useState(null);
+  const scrollY = useRef(0);
   const ThemeIcon = THEME_ICON[theme.mode];
+  const detail = detailId ? items.find((i) => i.id === detailId) ?? null : null; // a deleted item falls back to the list
+
+  const openDetail = (i) => { scrollY.current = window.scrollY; setDetailId(i.id); window.scrollTo(0, 0); };
+  const closeDetail = () => setDetailId(null);
+  useEffect(() => { if (!detail) window.scrollTo(0, scrollY.current); }, [detail]);
 
   const counts = useMemo(() => {
     const m = {};
@@ -44,6 +52,7 @@ export default function WardrobeScreen() {
   const del = (item) => {
     const index = removeItem(item.id);
     setSheet(null);
+    setDetailId(null);
     snackbar.show({ message: `Deleted “${item.name}”`, actionLabel: "Undo", onAction: () => restoreItem(item, index) });
   };
 
@@ -60,6 +69,23 @@ export default function WardrobeScreen() {
   const toggleView = () => setView((v) => { const n = v === "grid" ? "list" : "grid"; try { localStorage.setItem("wardrobe-view", n); } catch { /* storage unavailable */ } return n; });
 
   const meta = (i) => [i.color, i.brand, i.size && `Size ${i.size}`, i.season !== "all" && seasonLabel(i.season)].filter(Boolean);
+
+  if (detail) {
+    return (
+      <>
+        <ItemDetail item={detail} onBack={closeDetail} onEdit={() => setSheet({ kind: "item", item: detail })} onDelete={() => del(detail)} />
+        {sheet?.kind === "item" && (
+          <ItemSheet
+            key={sheet.item.id}
+            item={sheet.item}
+            onClose={() => setSheet(null)}
+            onSave={(i) => { saveItem(i); setSheet(null); }}
+            onDelete={() => del(sheet.item)}
+          />
+        )}
+      </>
+    );
+  }
 
   return (
     <>
@@ -125,7 +151,7 @@ export default function WardrobeScreen() {
                     const details = [i.color, i.size && `Size ${i.size}`, i.season !== "all" && seasonLabel(i.season)].filter(Boolean);
                     return (
                       <li key={i.id}>
-                        <button className="wd-card state" onClick={() => setSheet({ kind: "item", item: i })}>
+                        <button className="wd-card state" onClick={() => openDetail(i)}>
                           <span className="wd-thumb">
                             {i.image && <img src={i.image} alt={i.name} decoding="async" />}
                           </span>
@@ -143,7 +169,7 @@ export default function WardrobeScreen() {
                 <ul className="wd-ul">
                   {g.rows.map((i) => (
                     <li key={i.id} className="acc" style={{ "--hue": g.hue }}>
-                      <button className="wd-row state" onClick={() => setSheet({ kind: "item", item: i })}>
+                      <button className="wd-row state" onClick={() => openDetail(i)}>
                         <span className="wd-icon">{i.image && <img src={i.image} alt="" decoding="async" />}</span>
                         <span className="wd-main">
                           <span className="title-md">{i.name}</span>
