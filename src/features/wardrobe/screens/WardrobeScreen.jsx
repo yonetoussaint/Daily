@@ -116,30 +116,35 @@ export default function WardrobeScreen() {
         )}
 
         {groups.map((g) => {
-          const Icon = g.icon;
           return (
             <section key={g.name} className="wd-group" aria-label={g.name}>
               {activeCat === "all" && <h3 className="label-lg muted">{g.name} <span className="wd-count">{g.rows.length}</span></h3>}
               {view === "grid" ? (
                 <ul className="wd-grid">
-                  {g.rows.map((i) => (
-                    <li key={i.id} className="acc" style={{ "--hue": g.hue }}>
-                      <button className="wd-card state" onClick={() => setSheet({ kind: "item", item: i })}>
-                        <span className="wd-thumb">{i.image ? <img src={i.image} alt="" loading="lazy" /> : <Icon size={40} />}</span>
-                        <span className="wd-cap">
-                          <span className="title-md wd-name">{i.name}</span>
-                          {meta(i).length > 0 && <span className="body-md muted wd-meta">{meta(i).join(" · ")}</span>}
-                        </span>
-                      </button>
-                    </li>
-                  ))}
+                  {g.rows.map((i) => {
+                    const details = [i.color, i.size && `Size ${i.size}`, i.season !== "all" && seasonLabel(i.season)].filter(Boolean);
+                    return (
+                      <li key={i.id}>
+                        <button className="wd-card state" onClick={() => setSheet({ kind: "item", item: i })}>
+                          <span className="wd-thumb">
+                            {i.image && <img src={i.image} alt={i.name} loading="lazy" />}
+                          </span>
+                          <span className="wd-cap">
+                            {i.brand && <span className="wd-brand label-md">{i.brand}</span>}
+                            <span className="title-md wd-name">{i.name}</span>
+                            {details.length > 0 && <span className="wd-meta">{details.join(" · ")}</span>}
+                          </span>
+                        </button>
+                      </li>
+                    );
+                  })}
                 </ul>
               ) : (
                 <ul className="wd-ul">
                   {g.rows.map((i) => (
                     <li key={i.id} className="acc" style={{ "--hue": g.hue }}>
                       <button className="wd-row state" onClick={() => setSheet({ kind: "item", item: i })}>
-                        <span className="wd-icon">{i.image ? <img src={i.image} alt="" loading="lazy" /> : <Icon size={22} />}</span>
+                        <span className="wd-icon">{i.image && <img src={i.image} alt="" loading="lazy" />}</span>
                         <span className="wd-main">
                           <span className="title-md">{i.name}</span>
                           {meta(i).length > 0 && <span className="body-md muted wd-meta">{meta(i).join(" · ")}</span>}
