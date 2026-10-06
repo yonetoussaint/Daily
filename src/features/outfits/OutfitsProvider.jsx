@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import SyncGate from "../../data/SyncGate";
 import { selectAll } from "../../data/db";
 import useStore from "../../data/useStore";
-import { normalizeCategory } from "../wardrobe/model";
+import { isWearable, resolveKind } from "../wardrobe/model";
 import { uid } from "./model";
 import { outfitsStore } from "./storage";
 
@@ -28,10 +28,10 @@ export default function OutfitsProvider({ children }) {
     selectAll("wardrobe_items", "name.asc")
       .then((rows) => {
         if (cancelled) return;
-        setPieces(rows.map((i) => ({
+        setPieces(rows.map((i) => ({ ...i, category: resolveKind({ category: i.category, type: i.type, name: i.name }).category })).filter((i) => isWearable(i.category)).map((i) => ({
           id: i.id,
           name: i.name,
-          category: normalizeCategory(i.category),
+          category: i.category,
           color: i.color ?? "",
           brand: i.brand ?? "",
           size: i.size ?? "",

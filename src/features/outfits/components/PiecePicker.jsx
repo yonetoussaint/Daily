@@ -34,7 +34,7 @@ export default function PiecePicker({ pieces, selected, onChange, onDone }) {
       </nav>
 
       {shown.length === 0 ? (
-        <p className="body-md muted of-picker-empty">{pieces.length ? "No matches." : "Your wardrobe is empty — add pieces in the Wardrobe app first."}</p>
+        <p className="body-md muted of-picker-empty">{pieces.length ? "No matches." : "No clothing, footwear or accessories yet — add some in Wardrobe & Grooming first."}</p>
       ) : (
         <ul className="of-pick-grid">
           {shown.map((p) => {

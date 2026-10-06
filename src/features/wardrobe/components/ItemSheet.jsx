@@ -2,11 +2,12 @@ import { useRef, useState } from "react";
 import { Camera, Plus, Star, X } from "lucide-react";
 import { Button, Chip, Sheet, TextField, useSnackbar } from "../../../design/components";
 import { fileToThumb, itemImages, MAX_IMAGES } from "../image";
-import { CATEGORIES, EMPTY_ITEM, SEASONS } from "../model";
+import { CATEGORIES, EMPTY_ITEM, SEASONS, catMeta, typeChoices } from "../model";
 
 /** Add / edit a piece of clothing. Mounted only while open, so the form always starts fresh. */
-export default function ItemSheet({ item, defaultCategory, onClose, onSave, onDelete }) {
-  const [f, setF] = useState(() => ({ ...EMPTY_ITEM, category: defaultCategory ?? EMPTY_ITEM.category, ...item, images: itemImages(item) }));
+export default function ItemSheet({ item, defaultCategory, defaultType, onClose, onSave, onDelete }) {
+  const [f, setF] = useState(() => ({ ...EMPTY_ITEM, category: defaultCategory ?? EMPTY_ITEM.category, type: defaultType ?? "", ...item, images: itemImages(item) }));
+  const [custom, setCustom] = useState(false); // typing a type that isn't in the list
   const snackbar = useSnackbar();
   const fileRef = useRef(null);
   const [busy, setBusy] = useState(false);
@@ -39,7 +40,7 @@ export default function ItemSheet({ item, defaultCategory, onClose, onSave, onDe
     e.preventDefault();
     const name = f.name.trim();
     if (!name) return;
-    onSave({ ...item, name, category: f.category, color: f.color.trim(), brand: f.brand.trim(), size: f.size.trim(), season: f.season, notes: f.notes.trim(), images: f.images, image: f.images[0] ?? "" });
+    onSave({ ...item, name, category: f.category, type: f.type.trim(), color: f.color.trim(), brand: f.brand.trim(), size: f.size.trim(), season: f.season, notes: f.notes.trim(), images: f.images, image: f.images[0] ?? "" });
   };
 
   return (
@@ -72,9 +73,21 @@ export default function ItemSheet({ item, defaultCategory, onClose, onSave, onDe
         <fieldset className="sheet-section">
           <legend className="label-lg muted">Category</legend>
           <div className="chip-wrap">
-            {CATEGORIES.map((c) => <Chip key={c.name} hue={c.hue} selected={f.category === c.name} onClick={() => set({ category: c.name })}>{c.name}</Chip>)}
+            {CATEGORIES.map((c) => <Chip key={c.name} hue={c.hue} selected={f.category === c.name} onClick={() => { set({ category: c.name, type: c.name === f.category ? f.type : "" }); setCustom(false); }}>{c.name}</Chip>)}
+            {f.category === "Other" && <Chip hue={catMeta("Other").hue} selected>Other</Chip>}
           </div>
         </fieldset>
+
+        {catMeta(f.category).types.length > 0 && (
+          <fieldset className="sheet-section">
+            <legend className="label-lg muted">Type</legend>
+            <div className="chip-wrap">
+              {typeChoices(f.category, custom ? "" : f.type).map((t) => <Chip key={t} hue={catMeta(f.category).hue} selected={!custom && f.type === t} onClick={() => { setCustom(false); set({ type: f.type === t ? "" : t }); }}>{t}</Chip>)}
+              <Chip selected={custom} onClick={() => { setCustom(true); set({ type: catMeta(f.category).types.includes(f.type) ? "" : f.type }); }}>Other…</Chip>
+            </div>
+            {custom && <TextField label="Type" value={f.type} onChange={(e) => set({ type: e.target.value })} maxLength={40} autoComplete="off" />}
+          </fieldset>
+        )}
 
         <TextField label="Colour (optional)" value={f.color} onChange={(e) => set({ color: e.target.value })} maxLength={60} autoComplete="off" />
         <TextField label="Brand (optional)" value={f.brand} onChange={(e) => set({ brand: e.target.value })} maxLength={60} autoComplete="off" />

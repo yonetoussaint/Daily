@@ -21,7 +21,7 @@ export default function ItemDetail({ item, onBack, onEdit, onDelete }) {
     <>
       <TopAppBar
         title="Item"
-        leading={<IconButton label="Back to wardrobe" onClick={onBack}><ArrowLeft size={24} /></IconButton>}
+        leading={<IconButton label="Back" onClick={onBack}><ArrowLeft size={24} /></IconButton>}
         actions={<IconButton label="Edit item" onClick={onEdit}><Pencil size={22} /></IconButton>}
       />
       <main className="wd-page wd-detail">
@@ -30,7 +30,7 @@ export default function ItemDetail({ item, onBack, onEdit, onDelete }) {
         <header className="wd-detail-head">
           {item.brand && <p className="wd-brand label-md">{item.brand}</p>}
           <h1 className="display wd-detail-name">{item.name}</h1>
-          <div className="chip-wrap"><Chip hue={cat.hue} selected>{item.category}</Chip></div>
+          <div className="chip-wrap"><Chip hue={cat.hue} selected>{item.category}</Chip>{item.type && <Chip hue={cat.hue}>{item.type}</Chip>}</div>
         </header>
 
         <dl className="wd-facts">

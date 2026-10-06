@@ -19,7 +19,7 @@ Every app stores its data in Supabase. Run **`supabase/schema.sql`** once in the
 | Docs | `docs_books`, `docs_chapters`, `docs_sections` |
 | Projects | `projects`, `project_milestones`, `project_tasks`, `project_notes` |
 | Values | `life_values`, `life_principles`, `life_reflections` |
-| Wardrobe | `wardrobe_items` |
+| Wardrobe & Grooming | `wardrobe_items` |
 | Outfits | `outfits`, `outfit_items` |
 
 How it works: each app loads its rows when opened and saves changes shortly after (only the rows that changed are sent). If saving fails, a snackbar says so and it retries. The first time an app opens on a device, anything it had saved in that browser's localStorage is copied up to the database (the old localStorage copy is left untouched as a backup). The theme choice stays in localStorage on purpose.
@@ -42,7 +42,7 @@ Daily is a single-page app with no router and no URL routes (so no `_redirects` 
 | Values → Values | the things that matter most to you, by area of life, with how often you lived each one |
 | Values → Principles | rules you want to live by (“I listen before I answer”), linked to a value |
 | Values → Journal | days you lived it, fell short, lessons and quotes; a rotating **Today’s reminder** sits on top |
-| Wardrobe | every piece of clothing, with a bottom Pieces / Rooms bar like Home tasks (rooms are sandals, jeans, shoes, shirts…), search, and item photos (grid or list view), and **Import / Export JSON** (paste or load a file; an AI prompt is built in) |
+| Wardrobe & Grooming | nine categories, each with types: **Clothing** (shirts, jeans, suits, socks…), **Footwear**, **Skincare**, **Oral Care**, **Body Care**, **Fragrance**, **Hair & Grooming**, **Accessories**, **Grooming Tools**. Bottom Items / Categories bar, search, category chips with type chips under them, photos (grid or list), **Import / Export JSON** (paste or load a file; an AI prompt is built in). Old rooms (Shoes, Trousers, Underwear & Sleep…) are mapped into the new categories automatically. |
 | Todo | type a task the moment you're told it; lists (Personal, your own), who asked, due date, grouped Overdue / Today / Upcoming / No date |
 | Easy Gaz Plus | its own quick-capture task list for work: who asked, due date, grouped Overdue / Today / Upcoming / No date |
 

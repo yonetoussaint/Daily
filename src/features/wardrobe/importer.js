@@ -1,5 +1,5 @@
 import { isImageValue, itemImages, MAX_IMAGES } from "./image";
-import { CATEGORY_NAMES, EMPTY_ITEM, normalizeCategory, normalizeSeason } from "./model";
+import { CATEGORIES, EMPTY_ITEM, normalizeSeason, resolveKind } from "./model";
 
 /* ── JSON import / export ────────────────────────────────────────────────────
  * Accepts either a bare array of items or an object with an "items" array,
@@ -7,36 +7,38 @@ import { CATEGORY_NAMES, EMPTY_ITEM, normalizeCategory, normalizeSeason } from "
  */
 
 export const MAX_ITEMS = 2000;
-const LIMITS = { name: 120, color: 60, brand: 60, size: 30, notes: 1000 };
+const LIMITS = { name: 120, type: 40, color: 60, brand: 60, size: 30, notes: 1000 };
 
 export const EXAMPLE_JSON = `{
   "items": [
-    { "name": "White oxford shirt", "category": "Shirts", "color": "White", "brand": "Uniqlo", "size": "M", "season": "all" },
-    { "name": "Blue straight jeans", "category": "Jeans", "color": "Blue", "size": "32" },
-    { "name": "Leather slides", "category": "Sandals", "color": "Brown", "size": "43" },
-    { "name": "Wool overcoat", "category": "Jackets", "color": "Charcoal", "season": "cold", "notes": "Dry clean only" }
+    { "name": "White oxford shirt", "category": "Clothing", "type": "Shirts", "color": "White", "brand": "Uniqlo", "size": "M" },
+    { "name": "Leather slides", "category": "Footwear", "type": "Sandals", "color": "Brown", "size": "43" },
+    { "name": "Daily moisturizer SPF 30", "category": "Skincare", "type": "Sunscreen", "brand": "CeraVe" },
+    { "name": "Bleu de Chanel", "category": "Fragrance", "type": "Eau de parfum", "size": "100 ml" },
+    { "name": "Beard trimmer", "category": "Grooming Tools", "type": "Trimmer", "brand": "Philips" }
   ]
 }`;
 
 /** Prompt to hand to an AI (with a photo or a list of your clothes) so it answers in this format. */
-export const AI_PROMPT = `Turn my clothes into JSON for my wardrobe app.
+export const AI_PROMPT = `Turn my things into JSON for my wardrobe and grooming app.
 
-My clothes: <LIST OR DESCRIBE YOUR CLOTHES HERE>
+My things (clothes, shoes, skincare, grooming products, fragrances, accessories, tools): <LIST OR DESCRIBE THEM HERE>
 
 Reply with ONLY valid JSON (no markdown code fences, no commentary) in exactly this shape:
 
 {
   "items": [
-    { "name": "White oxford shirt", "category": "Shirts", "color": "White", "brand": "Uniqlo", "size": "M", "season": "all", "notes": "", "images": ["https://…/shirt-front.jpg", "https://…/shirt-back.jpg"] }
+    { "name": "White oxford shirt", "category": "Clothing", "type": "Shirts", "color": "White", "brand": "Uniqlo", "size": "M", "season": "all", "notes": "", "images": ["https://…/shirt-front.jpg", "https://…/shirt-back.jpg"] }
   ]
 }
 
 Rules:
 - "name" is required. Everything else is optional.
 - "images" is optional: a list of up to ${MAX_IMAGES} public https:// links to photos of the item, the first one is the cover (leave it out if you don't have any).
-- "category" is one of: ${CATEGORY_NAMES.join(", ")}.
+- "category" is one of the nine below, and "type" is one of the types listed under it:
+${CATEGORIES.map((c) => `    ${c.name}: ${c.types.join(", ")}`).join("\n")}
 - "season" is one of: "all", "warm", "cold".
-- One object per piece of clothing. Do not combine several pieces into one item.
+- One object per item. Do not combine several items into one.
 - Make sure the JSON is valid: double quotes, no trailing commas.`;
 
 const text = (v, max) => String(v ?? "").replace(/\s+/g, " ").trim().slice(0, max);
@@ -57,7 +59,7 @@ export function cleanItem(raw) {
   const item = {
     ...EMPTY_ITEM,
     name,
-    category: normalizeCategory(first(raw, ["category", "type", "kind"])),
+    ...resolveKind({ category: first(raw, ["category", "group", "kind"]), type: first(raw, ["type", "subcategory", "subtype"]), name }),
     color: text(first(raw, ["color", "colour"]), LIMITS.color),
     brand: text(raw.brand, LIMITS.brand),
     size: text(raw.size, LIMITS.size),
@@ -82,7 +84,7 @@ export function parseWardrobeJson(input) {
   } catch (err) {
     throw new Error(`That isn’t valid JSON (${err.message.replace(/^JSON\.parse: /, "")}).`);
   }
-  const list = Array.isArray(data) ? data : [data?.items, data?.clothes, data?.wardrobe].find(Array.isArray);
+  const list = Array.isArray(data) ? data : [data?.items, data?.clothes, data?.wardrobe, data?.products].find(Array.isArray);
   if (!list) throw new Error("Expected a list of items, or an object with an \"items\" list.");
   if (list.length > MAX_ITEMS) throw new Error(`That’s ${list.length} items. Import up to ${MAX_ITEMS} at a time.`);
   const items = [];
@@ -98,9 +100,9 @@ export function parseWardrobeJson(input) {
 /** The wardrobe as JSON text, in the same shape the importer reads (so it round-trips). */
 export function exportJson(items, { photos = false } = {}) {
   const rows = items.map((it) => {
-    const { id, name, category, color, brand, size, season, notes } = it;
+    const { id, name, category, type, color, brand, size, season, notes } = it;
     const imgs = itemImages(it);
-    return { id, name, category, color, brand, size, season, notes, ...(photos && imgs.length ? { images: imgs } : {}) };
+    return { id, name, category, type, color, brand, size, season, notes, ...(photos && imgs.length ? { images: imgs } : {}) };
   });
   return JSON.stringify({ items: rows }, null, 2);
 }

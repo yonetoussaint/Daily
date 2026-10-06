@@ -17,6 +17,6 @@ export const APPS = [
   { id: "values", label: "Values", description: "What matters and why", icon: Compass, hue: 350 },
   { id: "todo", label: "Todo", description: "Quick lists for anything", icon: ListTodo, hue: 200 },
   { id: "gaz", label: "Easy Gaz Plus", description: "Tasks for work", icon: Fuel, hue: 25 },
-  { id: "wardrobe", label: "Wardrobe", description: "Every piece you own", icon: Shirt, hue: 335 },
-  { id: "outfits", label: "Outfits", description: "Looks built from your wardrobe", icon: Sparkles, hue: 305 },
+  { id: "wardrobe", label: "Wardrobe & Grooming", description: "Clothing, footwear, skincare, fragrance, tools", icon: Shirt, hue: 335 },
+  { id: "outfits", label: "Outfits", description: "Looks built from your clothes, shoes and accessories", icon: Sparkles, hue: 305 },
 ];

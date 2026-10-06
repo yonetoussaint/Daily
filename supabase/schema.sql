@@ -7,7 +7,7 @@
 --   Docs        docs_books, docs_chapters, docs_sections
 --   Projects    projects, project_milestones, project_tasks, project_notes
 --   Values      life_values, life_principles, life_reflections
---   Wardrobe    wardrobe_items
+--   Wardrobe & Grooming    wardrobe_items
 --   Outfits     outfits, outfit_items (links to wardrobe_items)
 --
 -- The app has no sign-in (it talks to Supabase with the public anon key), so the
@@ -190,7 +190,7 @@ create index if not exists life_reflections_value_idx on public.life_reflections
 create table if not exists public.wardrobe_items (
   id         text primary key,
   name       text not null,
-  category   text not null default 'Other',         -- T-Shirts | Sweaters | Shirts | Dresses | Jeans | Trousers | Shorts | Jackets | Shoes | Sandals | Accessories | Activewear | Underwear & Sleep | Other
+  category   text not null default 'Other',         -- Clothing | Footwear | Skincare | Oral Care | Body Care | Fragrance | Hair & Grooming | Accessories | Grooming Tools | Other
   color      text not null default '',
   brand      text not null default '',
   size       text not null default '',
@@ -202,7 +202,23 @@ create table if not exists public.wardrobe_items (
 alter table public.wardrobe_items add column if not exists image text not null default '';
 -- Gallery: every photo of the item, cover first (the `image` column keeps a copy of the cover).
 alter table public.wardrobe_items add column if not exists images jsonb not null default '[]'::jsonb;
+-- Type inside the category (Shirts, Sneakers, Sunscreen, Cologne, Trimmer…). Free text; the app offers a list per category.
+alter table public.wardrobe_items add column if not exists type text not null default '';
 create index if not exists wardrobe_items_category_idx on public.wardrobe_items (category);
+-- One-time move of the old rooms into the new categories. Safe to re-run (the old names are gone after the first run).
+-- The app also maps old names when it loads, so skipping this is harmless; running it just makes the database match.
+update public.wardrobe_items set category = 'Clothing', type = 'T-shirts'   where category = 'T-Shirts';
+update public.wardrobe_items set category = 'Clothing', type = 'Sweaters'   where category = 'Sweaters';
+update public.wardrobe_items set category = 'Clothing', type = 'Shirts'     where category = 'Shirts';
+update public.wardrobe_items set category = 'Clothing', type = 'Dresses'    where category = 'Dresses';
+update public.wardrobe_items set category = 'Clothing', type = 'Jeans'      where category = 'Jeans';
+update public.wardrobe_items set category = 'Clothing', type = 'Pants'      where category = 'Trousers';
+update public.wardrobe_items set category = 'Clothing', type = 'Shorts'     where category = 'Shorts';
+update public.wardrobe_items set category = 'Clothing', type = 'Jackets'    where category = 'Jackets';
+update public.wardrobe_items set category = 'Clothing', type = 'Activewear' where category = 'Activewear';
+update public.wardrobe_items set category = 'Footwear', type = 'Sandals'    where category = 'Sandals';
+update public.wardrobe_items set category = 'Footwear'                      where category = 'Shoes';
+update public.wardrobe_items set category = 'Clothing'                      where category = 'Underwear & Sleep';
 
 -- ── Outfits ────────────────────────────────────────────────────────────────
 create table if not exists public.outfits (

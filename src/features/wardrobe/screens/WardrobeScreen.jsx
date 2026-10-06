@@ -13,10 +13,10 @@ import RoomsScreen from "./RoomsScreen";
 
 // Same bottom bar as Home tasks: two destinations, a rail on wide screens.
 const DESTINATIONS = [
-  { id: "pieces", label: "Pieces", icon: <Shirt size={24} /> },
-  { id: "rooms", label: "Rooms", icon: <LayoutGrid size={24} /> },
+  { id: "pieces", label: "Items", icon: <Shirt size={24} /> },
+  { id: "rooms", label: "Categories", icon: <LayoutGrid size={24} /> },
 ];
-const TITLES = { pieces: "Wardrobe", rooms: "Rooms" };
+const TITLES = { pieces: "Wardrobe & Grooming", rooms: "Categories" };
 const THEME_ICON = { auto: SunMoon, light: Sun, dark: Moon };
 
 export default function WardrobeScreen() {
@@ -27,6 +27,7 @@ export default function WardrobeScreen() {
   const { items, saveItem, removeItem, restoreItem, importItems, restoreAll } = useWardrobe();
   const [tab, setTab] = useState("pieces");
   const [cat, setCat] = useState("all");
+  const [type, setType] = useState("");
   const [query, setQuery] = useState("");
   const [view, setView] = useState(() => { try { return localStorage.getItem("wardrobe-view") === "list" ? "list" : "grid"; } catch { return "grid"; } });
   const [sheet, setSheet] = useState(null); // { kind: "item", item? } | { kind: "import" } | { kind: "export" }
@@ -40,7 +41,8 @@ export default function WardrobeScreen() {
   useEffect(() => { if (!detail) window.scrollTo(0, scrollY.current); }, [detail]);
 
   const goTab = (t) => { setTab(t); window.scrollTo(0, 0); };
-  const openRoom = (name) => { setCat(name); setQuery(""); goTab("pieces"); };
+  const openRoom = (name) => { setCat(name); setType(""); setQuery(""); goTab("pieces"); };
+  const pickCat = (name) => { setCat(name); setType(""); };
 
   const counts = useMemo(() => {
     const m = {};
@@ -72,6 +74,7 @@ export default function WardrobeScreen() {
       key={sheet.item?.id ?? "new"}
       item={sheet.item}
       defaultCategory={cat === "all" ? undefined : cat}
+      defaultType={type || undefined}
       onClose={() => setSheet(null)}
       onSave={(i) => { saveItem(i); setSheet(null); }}
       onDelete={() => del(sheet.item)}
@@ -112,7 +115,9 @@ export default function WardrobeScreen() {
             items={items}
             counts={counts}
             cat={cat}
-            onCat={setCat}
+            onCat={pickCat}
+            type={type}
+            onType={setType}
             query={query}
             onQuery={setQuery}
             view={view}

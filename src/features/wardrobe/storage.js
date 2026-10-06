@@ -1,5 +1,5 @@
 import { createStore, ms, ts } from "../../data/sync";
-import { normalizeCategory } from "./model";
+import { resolveKind } from "./model";
 import { itemImages } from "./image";
 
 /** Table: wardrobe_items (see supabase/schema.sql). */
@@ -11,6 +11,7 @@ export const wardrobeStore = createStore({
       id: i.id,
       name: i.name,
       category: i.category ?? "Other",
+      type: i.type ?? "",
       color: i.color ?? "",
       brand: i.brand ?? "",
       size: i.size ?? "",
@@ -25,7 +26,7 @@ export const wardrobeStore = createStore({
     items: r.wardrobe_items.map((i) => ({
       id: i.id,
       name: i.name,
-      category: normalizeCategory(i.category),
+      ...resolveKind({ category: i.category, type: i.type, name: i.name }), // old rooms (Shoes, Jeans…) are mapped to the new categories
       color: i.color ?? "",
       brand: i.brand ?? "",
       size: i.size ?? "",
