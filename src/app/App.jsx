@@ -1,5 +1,6 @@
 import { SnackbarProvider } from "../design/components";
 import { DocsApp } from "../features/docs";
+import { GazApp } from "../features/gaz";
 import { OutfitsApp } from "../features/outfits";
 import { ProjectsApp } from "../features/projects";
 import { TodoApp } from "../features/todo";
@@ -15,6 +16,7 @@ function Current() {
   if (app === "docs") return <DocsApp />;
   if (app === "projects") return <ProjectsApp />;
   if (app === "todo") return <TodoApp />;
+  if (app === "gaz") return <GazApp />;
   if (app === "values") return <ValuesApp />;
   if (app === "wardrobe") return <WardrobeApp />;
   if (app === "outfits") return <OutfitsApp />;

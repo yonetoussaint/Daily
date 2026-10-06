@@ -1,6 +1,6 @@
 # Daily
 
-A home to-do app in **Material 3 Expressive**, plus a writing workspace (Docs), a project planner (Projects) and a place for your values and morals (Values) and a quick-capture Todo with a list for work (Easy Gaz Plus), all in the same design system. Apps are opened from the hamburger drawer. React + Vite, Supabase REST for storage.
+A home to-do app in **Material 3 Expressive**, plus a writing workspace (Docs), a project planner (Projects) and a place for your values and morals (Values), a quick-capture Todo, and Easy Gaz Plus (tasks for work), all in the same design system. Apps are opened from the hamburger drawer. React + Vite, Supabase REST for storage.
 
 ```
 npm i && npm run dev
@@ -43,7 +43,8 @@ Daily is a single-page app with no router and no URL routes (so no `_redirects` 
 | Values → Principles | rules you want to live by (“I listen before I answer”), linked to a value |
 | Values → Journal | days you lived it, fell short, lessons and quotes; a rotating **Today’s reminder** sits on top |
 | Wardrobe | every piece of clothing by category (tops, bottoms, shoes…), search, and item photos (grid or list view), and **Import / Export JSON** (paste or load a file; an AI prompt is built in) |
-| Todo | type a task the moment you're told it; lists (Easy Gaz Plus, Personal, your own), who asked, due date, grouped Overdue / Today / Upcoming / No date |
+| Todo | type a task the moment you're told it; lists (Personal, your own), who asked, due date, grouped Overdue / Today / Upcoming / No date |
+| Easy Gaz Plus | its own quick-capture task list for work: who asked, due date, grouped Overdue / Today / Upcoming / No date |
 
 ## Structure
 

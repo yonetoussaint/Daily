@@ -1,0 +1,31 @@
+/* Easy Gaz Plus app */
+.gz-fab { position: fixed; z-index: 25; right: 16px; bottom: calc(16px + env(safe-area-inset-bottom)); }
+.gz-page { max-width: var(--content-max); margin: 0 auto; padding: 0 16px 120px; }
+.gz-head { padding: 4px 4px 16px; }
+.gz-head .display { margin-top: 4px; }
+.gz-quick { margin: 0; }
+.gz-listbar { display: flex; align-items: center; gap: 8px; margin: 4px 0 8px; padding: 0 4px; }
+.gz-listbar .wavy { flex: 1; color: var(--primary); }
+
+.gz-group { margin-top: 20px; }
+.gz-group h3 { padding: 0 4px 8px; }
+.gz-list-ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.gz-row { display: flex; align-items: stretch; gap: 4px; border-radius: var(--shape-lg); background: var(--surface-container-low); }
+.gz-check { flex: none; width: 52px; display: grid; place-items: center; border: 0; background: none; color: var(--acc); cursor: pointer; border-radius: var(--shape-lg); }
+.gz-main { flex: 1; min-width: 0; display: grid; gap: 4px; padding: 14px 16px 14px 0; text-align: left; border: 0; background: none; color: inherit; font: inherit; cursor: pointer; border-radius: var(--shape-lg); }
+.gz-main .is-done { text-decoration: line-through; color: var(--on-surface-variant); }
+.gz-meta { display: flex; flex-wrap: wrap; gap: 4px 12px; }
+.gz-list { color: var(--acc); font-weight: 600; }
+.gz-who { display: inline-flex; align-items: center; gap: 4px; }
+.gz-notes { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.gz-donebar { display: flex; justify-content: space-between; align-items: center; }
+.gz-toggle { min-height: 44px; padding: 0 8px; border: 0; background: none; border-radius: var(--shape-full); cursor: pointer; font: inherit; color: var(--primary); }
+.gz-donebar .gz-toggle:first-child { color: var(--on-surface-variant); }
+
+.gz-textarea { height: auto; min-height: 96px; padding-top: 28px; resize: vertical; font: inherit; }
+
+@media (min-width: 840px) { .gz-page { padding-top: 8px; } }
+
+.gz-count { margin-left: 6px; padding: 1px 8px; border-radius: var(--shape-full); background: var(--surface-container-high); }
+.gz-late { color: var(--error); font-weight: 600; }
+.gz-danger { color: var(--error); margin-right: auto; }

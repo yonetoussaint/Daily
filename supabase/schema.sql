@@ -50,11 +50,32 @@ create table if not exists public.todo_tasks (
 create index if not exists todo_tasks_list_idx on public.todo_tasks (list_id);
 create index if not exists todo_tasks_due_idx  on public.todo_tasks (due) where not done;
 
--- The two starting lists.
+-- The starting list.
 insert into public.todo_lists (id, name, hue, position) values
-  ('list_easygaz',  'Easy Gaz Plus', 25,  0),
-  ('list_personal', 'Personal',      285, 1)
+  ('list_personal', 'Personal', 285, 0)
 on conflict (id) do nothing;
+
+-- ── Easy Gaz Plus ──────────────────────────────────────────────────────────
+-- Its own app (it used to be a list inside Todo).
+create table if not exists public.gaz_tasks (
+  id         text primary key,
+  title      text not null,
+  asked_by   text not null default '',
+  due        date,
+  notes      text not null default '',
+  done       boolean not null default false,
+  done_at    timestamptz,
+  created_at timestamptz default now()
+);
+create index if not exists gaz_tasks_due_idx on public.gaz_tasks (due) where not done;
+
+-- One-time move for existing databases: copy the old Easy Gaz Plus list's tasks
+-- over, then remove that list from Todo (its tasks go with it). Safe to re-run.
+insert into public.gaz_tasks (id, title, asked_by, due, notes, done, done_at, created_at)
+  select id, title, asked_by, due, notes, done, done_at, created_at
+  from public.todo_tasks where list_id = 'list_easygaz'
+on conflict (id) do nothing;
+delete from public.todo_lists where id = 'list_easygaz';
 
 -- ── Docs ───────────────────────────────────────────────────────────────────
 create table if not exists public.docs_books (
@@ -221,7 +242,7 @@ declare
 begin
   foreach t in array array[
     'home_organizer_items',
-    'todo_lists', 'todo_tasks',
+    'todo_lists', 'todo_tasks', 'gaz_tasks',
     'docs_books', 'docs_chapters', 'docs_sections',
     'projects', 'project_milestones', 'project_tasks', 'project_notes',
     'life_values', 'life_principles', 'life_reflections',
