@@ -14,7 +14,12 @@ export default function useStore(store) {
   const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
-    store.setErrorHandler(() => snackbar.show({ message: "Couldn’t save to the database — will keep trying" }));
+    store.setErrorHandler((err) => {
+      const m = String(err?.message ?? "");
+      // A column the app sends but the database doesn't have yet: the SQL setup needs re-running.
+      const missing = /column|schema cache/i.test(m) ? ` — run the latest supabase/schema.sql (${m.replace(/^Failed to save /, "").slice(0, 90)})` : "";
+      snackbar.show({ message: `Couldn’t save to the database${missing || " — will keep trying"}` });
+    });
   }, [store, snackbar]);
 
   useEffect(() => {

@@ -127,7 +127,7 @@ export default function WardrobeScreen() {
                       <li key={i.id}>
                         <button className="wd-card state" onClick={() => setSheet({ kind: "item", item: i })}>
                           <span className="wd-thumb">
-                            {i.image && <img src={i.image} alt={i.name} loading="lazy" />}
+                            {i.image && <img src={i.image} alt={i.name} decoding="async" />}
                           </span>
                           <span className="wd-cap">
                             {i.brand && <span className="wd-brand label-md">{i.brand}</span>}
@@ -144,7 +144,7 @@ export default function WardrobeScreen() {
                   {g.rows.map((i) => (
                     <li key={i.id} className="acc" style={{ "--hue": g.hue }}>
                       <button className="wd-row state" onClick={() => setSheet({ kind: "item", item: i })}>
-                        <span className="wd-icon">{i.image && <img src={i.image} alt="" loading="lazy" />}</span>
+                        <span className="wd-icon">{i.image && <img src={i.image} alt="" decoding="async" />}</span>
                         <span className="wd-main">
                           <span className="title-md">{i.name}</span>
                           {meta(i).length > 0 && <span className="body-md muted wd-meta">{meta(i).join(" · ")}</span>}

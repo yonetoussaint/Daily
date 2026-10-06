@@ -39,7 +39,7 @@
 /* Product cards */
 .wd-grid { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .wd-card { width: 100%; height: 100%; display: flex; flex-direction: column; padding: 0; text-align: left; border: 1px solid var(--outline-variant); border-radius: var(--shape-lg); overflow: hidden; background: var(--surface-container-lowest, var(--surface)); color: inherit; font: inherit; cursor: pointer; }
-.wd-thumb { position: relative; display: block; aspect-ratio: 4 / 5; background: var(--surface-container-high); }
+.wd-thumb { position: relative; display: block; flex: none; width: 100%; height: 0; padding-bottom: 125%; overflow: hidden; background: var(--surface-container-high); } /* 4:5 without aspect-ratio, which some mobile browsers mis-size inside flex */
 .wd-thumb img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
 .wd-cap { display: grid; gap: 3px; padding: 12px 14px 14px; border-top: 1px solid var(--outline-variant); }
 .wd-brand { text-transform: uppercase; letter-spacing: .08em; color: var(--on-surface-variant); overflow-wrap: anywhere; }
