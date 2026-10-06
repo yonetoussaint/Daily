@@ -175,3 +175,23 @@
 .sheet-section legend + * { clear: both; }
 .chip-wrap { display: flex; flex-wrap: wrap; gap: 8px; }
 .sheet-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px; }
+
+/* ── Day strip ── */
+.daystrip { margin: 4px 0 8px; }
+.daystrip-head { display: flex; align-items: center; justify-content: space-between; min-height: 40px; padding: 0 4px; }
+.daystrip-today { min-height: 36px; padding: 0 14px; border: 0; border-radius: var(--shape-full); background: var(--acc-c); color: var(--on-acc-c); font: inherit; cursor: pointer; }
+.daystrip-scroll { display: flex; gap: 6px; overflow-x: auto; margin: 0 -16px; padding: 4px 16px 8px; scrollbar-width: none; scroll-snap-type: x proximity; }
+.daystrip-scroll::-webkit-scrollbar { display: none; }
+.daystrip-day { flex: none; scroll-snap-align: center; width: 52px; display: grid; justify-items: center; gap: 2px; padding: 8px 0 6px; border: 1px solid transparent; border-radius: var(--shape-lg-inc); background: var(--surface-container-low); color: var(--on-surface); font: inherit; cursor: pointer; transition: background var(--fade), color var(--fade), border-radius var(--spring-fast); }
+.daystrip-day.is-monday { margin-left: 8px; }
+.daystrip-wd { color: var(--on-surface-variant); }
+.daystrip-day.is-today:not([aria-pressed="true"]) { border-color: var(--acc); }
+.daystrip-day.is-today:not([aria-pressed="true"]) .daystrip-wd { color: var(--acc); }
+.daystrip-day[aria-pressed="true"] { background: var(--acc); color: var(--on-acc); border-radius: var(--shape-full); }
+.daystrip-day[aria-pressed="true"] .daystrip-wd { color: inherit; opacity: .85; }
+.daystrip-dots { display: flex; gap: 3px; height: 6px; align-items: center; }
+.daystrip-dots i { display: block; width: 6px; height: 6px; border-radius: 50%; }
+.daystrip-dots .dot-done { background: var(--acc); }
+.daystrip-dots .dot-due { border: 1.5px solid var(--acc); }
+.daystrip-day[aria-pressed="true"] .dot-done { background: var(--on-acc); }
+.daystrip-day[aria-pressed="true"] .dot-due { border-color: var(--on-acc); }

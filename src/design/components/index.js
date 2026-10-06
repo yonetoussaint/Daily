@@ -7,3 +7,4 @@ export { WavyProgress, EmptyState, SnackbarProvider, useSnackbar } from "./Feedb
 export { default as Sheet } from "./Sheet";
 export { default as TextField } from "./TextField";
 export { NavigationBar, TopAppBar, useScrollingDown } from "./Navigation";
+export { default as DayStrip, isoOf, isoFromMs, addDays } from "./DayStrip";

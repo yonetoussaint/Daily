@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { CheckCircle2, Circle, ListChecks, Menu, Moon, Plus, Sun, SunMoon, User } from "lucide-react";
-import { EmptyState, Fab, IconButton, TextField, TopAppBar, WavyProgress, useScrollingDown, useSnackbar } from "../../../design/components";
+import { DayStrip, EmptyState, Fab, IconButton, TextField, TopAppBar, WavyProgress, useScrollingDown, useSnackbar, isoFromMs } from "../../../design/components";
 import { useDrawer } from "../../../app/DrawerProvider";
 import { useTheme } from "../../../app/useTheme";
 import { useGaz } from "../GazProvider";
@@ -23,6 +23,18 @@ export default function GazScreen() {
   const open = tasks.filter((t) => !t.done);
   const done = tasks.filter((t) => t.done).sort((a, b) => (b.doneAt ?? 0) - (a.doneAt ?? 0));
   const today = todayIso();
+  const [day, setDay] = useState(todayIso);
+  const isToday = day === today;
+  const dayDone = tasks.filter((t) => t.done && t.doneAt && isoFromMs(t.doneAt) === day).sort((a, b) => b.doneAt - a.doneAt);
+  const dayDue = tasks.filter((t) => !t.done && t.due === day);
+  const marks = useMemo(() => {
+    const m = {};
+    for (const t of tasks) {
+      if (t.done && t.doneAt) { const k = isoFromMs(t.doneAt); (m[k] ??= {}).done = (m[k].done ?? 0) + 1; }
+      else if (!t.done && t.due) (m[t.due] ??= {}).due = (m[t.due].due ?? 0) + 1;
+    }
+    return m;
+  }, [tasks]);
   const dueSoon = open.filter((t) => t.due && t.due <= today).length;
 
   const addQuick = (e) => {
@@ -72,10 +84,13 @@ export default function GazScreen() {
       />
       <main className="gz-page acc" style={{ "--hue": HUE }}>
         <header className="gz-head">
-          <p className="overline muted">{open.length} to do{dueSoon > 0 ? ` · ${dueSoon} due or overdue` : ""}</p>
+          <p className="overline muted">{isToday ? `${open.length} to do${dueSoon > 0 ? ` · ${dueSoon} due or overdue` : ""}` : `${dayDone.length} done · ${dayDue.length} due`}</p>
           <h1 className="display">Easy Gaz Plus</h1>
         </header>
 
+        <DayStrip value={day} onChange={setDay} marks={marks} hue={HUE} label="Browse days" />
+
+        {isToday && (
         <form onSubmit={addQuick} className="gz-quick">
           <TextField
             className="field-pill"
@@ -88,7 +103,9 @@ export default function GazScreen() {
             autoComplete="off"
           />
         </form>
+        )}
 
+        {isToday ? (<>
         {tasks.length > 0 && (
           <div className="gz-listbar">
             <WavyProgress value={done.length} total={tasks.length} label="Easy Gaz Plus progress" />
@@ -122,6 +139,27 @@ export default function GazScreen() {
             </div>
             {showDone && <ul className="gz-list-ul">{done.map(row)}</ul>}
           </section>
+        )}
+        </>) : (
+          <>
+            {dayDone.length === 0 && dayDue.length === 0 && (
+              <EmptyState icon={<ListChecks size={48} />} title={day < today ? "Nothing finished" : "Nothing due"}>
+                {day < today ? "No tasks were completed on this day." : "No tasks are due on this day."}
+              </EmptyState>
+            )}
+            {dayDone.length > 0 && (
+              <section className="gz-group" aria-label="Done">
+                <h3 className="label-lg muted">Done <span className="gz-count">{dayDone.length}</span></h3>
+                <ul className="gz-list-ul">{dayDone.map(row)}</ul>
+              </section>
+            )}
+            {dayDue.length > 0 && (
+              <section className="gz-group" aria-label="Due">
+                <h3 className="label-lg muted">Due <span className="gz-count">{dayDue.length}</span></h3>
+                <ul className="gz-list-ul">{dayDue.map(row)}</ul>
+              </section>
+            )}
+          </>
         )}
       </main>
 
