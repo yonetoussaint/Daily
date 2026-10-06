@@ -1,5 +1,5 @@
 import { isImageValue } from "./image";
-import { EMPTY_ITEM, normalizeCategory, normalizeSeason } from "./model";
+import { CATEGORY_NAMES, EMPTY_ITEM, normalizeCategory, normalizeSeason } from "./model";
 
 /* ── JSON import / export ────────────────────────────────────────────────────
  * Accepts either a bare array of items or an object with an "items" array,
@@ -11,9 +11,10 @@ const LIMITS = { name: 120, color: 60, brand: 60, size: 30, notes: 1000 };
 
 export const EXAMPLE_JSON = `{
   "items": [
-    { "name": "White oxford shirt", "category": "Tops", "color": "White", "brand": "Uniqlo", "size": "M", "season": "all" },
-    { "name": "Black chinos", "category": "Bottoms", "color": "Black", "size": "32" },
-    { "name": "Wool overcoat", "category": "Outerwear", "color": "Charcoal", "season": "cold", "notes": "Dry clean only" }
+    { "name": "White oxford shirt", "category": "Shirts", "color": "White", "brand": "Uniqlo", "size": "M", "season": "all" },
+    { "name": "Blue straight jeans", "category": "Jeans", "color": "Blue", "size": "32" },
+    { "name": "Leather slides", "category": "Sandals", "color": "Brown", "size": "43" },
+    { "name": "Wool overcoat", "category": "Jackets", "color": "Charcoal", "season": "cold", "notes": "Dry clean only" }
   ]
 }`;
 
@@ -26,14 +27,14 @@ Reply with ONLY valid JSON (no markdown code fences, no commentary) in exactly t
 
 {
   "items": [
-    { "name": "White oxford shirt", "category": "Tops", "color": "White", "brand": "Uniqlo", "size": "M", "season": "all", "notes": "", "image": "https://…/shirt.jpg" }
+    { "name": "White oxford shirt", "category": "Shirts", "color": "White", "brand": "Uniqlo", "size": "M", "season": "all", "notes": "", "image": "https://…/shirt.jpg" }
   ]
 }
 
 Rules:
 - "name" is required. Everything else is optional.
 - "image" is optional: a public https:// link to a photo of the item (leave it out if you don't have one).
-- "category" is one of: Tops, Bottoms, Outerwear, Dresses, Shoes, Accessories, Activewear, Sleep & Under, Other.
+- "category" is one of: ${CATEGORY_NAMES.join(", ")}.
 - "season" is one of: "all", "warm", "cold".
 - One object per piece of clothing. Do not combine several pieces into one item.
 - Make sure the JSON is valid: double quotes, no trailing commas.`;

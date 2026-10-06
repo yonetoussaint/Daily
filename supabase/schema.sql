@@ -190,7 +190,7 @@ create index if not exists life_reflections_value_idx on public.life_reflections
 create table if not exists public.wardrobe_items (
   id         text primary key,
   name       text not null,
-  category   text not null default 'Other',         -- Tops | Bottoms | Outerwear | Dresses | Shoes | Accessories | Activewear | Sleep & Under | Other
+  category   text not null default 'Other',         -- T-Shirts | Sweaters | Shirts | Dresses | Jeans | Trousers | Shorts | Jackets | Shoes | Sandals | Accessories | Activewear | Underwear & Sleep | Other
   color      text not null default '',
   brand      text not null default '',
   size       text not null default '',

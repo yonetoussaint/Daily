@@ -1,4 +1,4 @@
-import { CATEGORIES } from "../wardrobe/model";
+import { CATEGORIES, catMeta } from "../wardrobe/model";
 
 export { SEASONS, seasonLabel, catMeta, CATEGORIES } from "../wardrobe/model";
 
@@ -17,9 +17,8 @@ export const occasionMeta = (id) => OCCASIONS.find((o) => o.id === id) ?? OCCASI
 
 export const EMPTY_OUTFIT = { name: "", occasion: "casual", season: "all", notes: "", favorite: false, itemIds: [] };
 
-/** Head to toe: how an outfit's pieces are laid out. */
-const ORDER = ["Tops", "Dresses", "Bottoms", "Outerwear", "Shoes", "Accessories", "Activewear", "Sleep & Under", "Other"];
-const rank = (cat) => { const i = ORDER.indexOf(cat); return i < 0 ? ORDER.length : i; };
+/** Head to toe: the wardrobe's room order is how an outfit's pieces are laid out. */
+const rank = (cat) => { const i = CATEGORIES.findIndex((c) => c.name === catMeta(cat).name); return i < 0 ? CATEGORIES.length : i; };
 
 /** Sort wardrobe pieces head to toe (stable inside a category). */
 export const sortPieces = (pieces) => [...pieces].sort((a, b) => rank(a.category) - rank(b.category));

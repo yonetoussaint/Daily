@@ -1,4 +1,5 @@
 import { createStore, ms, ts } from "../../data/sync";
+import { normalizeCategory } from "./model";
 
 /** Table: wardrobe_items (see supabase/schema.sql). */
 export const wardrobeStore = createStore({
@@ -22,7 +23,7 @@ export const wardrobeStore = createStore({
     items: r.wardrobe_items.map((i) => ({
       id: i.id,
       name: i.name,
-      category: i.category ?? "Other",
+      category: normalizeCategory(i.category),
       color: i.color ?? "",
       brand: i.brand ?? "",
       size: i.size ?? "",

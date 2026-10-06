@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import SyncGate from "../../data/SyncGate";
 import { selectAll } from "../../data/db";
 import useStore from "../../data/useStore";
+import { normalizeCategory } from "../wardrobe/model";
 import { uid } from "./model";
 import { outfitsStore } from "./storage";
 
@@ -30,7 +31,7 @@ export default function OutfitsProvider({ children }) {
         setPieces(rows.map((i) => ({
           id: i.id,
           name: i.name,
-          category: i.category ?? "Other",
+          category: normalizeCategory(i.category),
           color: i.color ?? "",
           brand: i.brand ?? "",
           size: i.size ?? "",
