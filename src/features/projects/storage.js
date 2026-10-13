@@ -1,4 +1,5 @@
 import { createStore, ms, ts } from "../../data/sync";
+import { flattenFolders } from "./model";
 
 const LEGACY_KEY = "projects-app:data";
 
@@ -11,22 +12,25 @@ function legacy() {
   return null;
 }
 
-/** Tables: projects, project_milestones, project_tasks, project_notes. The state is the array of projects. */
+/** Tables: projects, project_milestones, project_folders, project_tasks, project_notes. The state is the array of projects. */
 export const projectsStore = createStore({
   key: "projects",
   legacy,
   tables: [
     { name: "projects", order: "position.asc" },
     { name: "project_milestones", order: "position.asc" },
+    { name: "project_folders", order: "position.asc" },
     { name: "project_tasks", order: "position.asc" },
     { name: "project_notes", order: "position.asc" },
   ],
   toRows: (projects) => {
-    const out = { projects: [], project_milestones: [], project_tasks: [], project_notes: [] };
+    const out = { projects: [], project_milestones: [], project_folders: [], project_tasks: [], project_notes: [] };
     projects.forEach((p, pi) => {
       out.projects.push({ id: p.id, name: p.name, tagline: p.tagline ?? "", stage: p.stage ?? "Idea", hue: p.hue ?? 285, position: pi, created_at: ts(p.createdAt), updated_at: ts(p.updatedAt) });
       (p.milestones ?? []).forEach((m, i) => out.project_milestones.push({ id: m.id, project_id: p.id, title: m.title, due: m.due || null, position: i }));
-      (p.tasks ?? []).forEach((t, i) => out.project_tasks.push({ id: t.id, project_id: p.id, milestone_id: t.milestoneId || null, title: t.title, area: t.area ?? "product", details: t.details ?? "", due: t.due || null, status: t.status ?? "todo", position: i }));
+      // parents before children, so a folder is saved after the one it sits in
+      flattenFolders(p.folders ?? []).forEach(({ folder: f }, i) => out.project_folders.push({ id: f.id, project_id: p.id, parent_id: f.parentId || null, name: f.name, position: i }));
+      (p.tasks ?? []).forEach((t, i) => out.project_tasks.push({ id: t.id, project_id: p.id, milestone_id: t.milestoneId || null, folder_id: t.folderId || null, title: t.title, area: t.area ?? "product", details: t.details ?? "", due: t.due || null, status: t.status ?? "todo", position: i }));
       (p.notes ?? []).forEach((n, i) => out.project_notes.push({ id: n.id, project_id: p.id, title: n.title, kind: n.kind ?? "note", body: n.body ?? "", created_at: ts(n.createdAt), position: i }));
     });
     return out;
@@ -41,11 +45,12 @@ export const projectsStore = createStore({
       return by;
     };
     const milestones = group(r.project_milestones, (m) => ({ id: m.id, title: m.title, due: m.due ?? "" }));
-    const tasks = group(r.project_tasks, (t) => ({ id: t.id, title: t.title, area: t.area, milestoneId: t.milestone_id ?? null, due: t.due ?? "", details: t.details ?? "", status: t.status }));
+    const folders = group(r.project_folders, (f) => ({ id: f.id, name: f.name, parentId: f.parent_id ?? null }));
+    const tasks = group(r.project_tasks, (t) => ({ id: t.id, title: t.title, area: t.area, milestoneId: t.milestone_id ?? null, folderId: t.folder_id ?? null, due: t.due ?? "", details: t.details ?? "", status: t.status }));
     const notes = group(r.project_notes, (n) => ({ id: n.id, title: n.title, kind: n.kind, body: n.body ?? "", createdAt: ms(n.created_at) }));
     return r.projects.map((p) => ({
       id: p.id, name: p.name, tagline: p.tagline ?? "", stage: p.stage, hue: p.hue,
-      milestones: milestones.get(p.id) ?? [], tasks: tasks.get(p.id) ?? [], notes: notes.get(p.id) ?? [],
+      milestones: milestones.get(p.id) ?? [], folders: folders.get(p.id) ?? [], tasks: tasks.get(p.id) ?? [], notes: notes.get(p.id) ?? [],
       createdAt: ms(p.created_at), updatedAt: ms(p.updated_at),
     }));
   },

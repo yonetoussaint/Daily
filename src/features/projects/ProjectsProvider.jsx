@@ -18,7 +18,7 @@ export default function ProjectsProvider({ children }) {
 
   const createProject = useCallback((data) => {
     const now = Date.now();
-    const project = { id: uid("pj"), ...data, milestones: [], tasks: [], notes: [], createdAt: now, updatedAt: now };
+    const project = { id: uid("pj"), ...data, milestones: [], folders: [], tasks: [], notes: [], createdAt: now, updatedAt: now };
     setProjects((p) => [...p, project]);
     return project;
   }, []);

@@ -4,11 +4,12 @@ import { ButtonGroup, Fab, IconButton, TopAppBar, WavyProgress, useScrollingDown
 import { useNav } from "../../../app/NavProvider";
 import { useProjects } from "../ProjectsProvider";
 import { nextStatus, progress, uid, upsert } from "../model";
+import FolderSheet from "../components/FolderSheet";
 import { NotesTab, RoadmapTab, TABS, TasksTab } from "../components/Tabs";
 import EntrySheet from "../components/EntrySheet";
 import ProjectSheet from "../components/ProjectSheet";
 
-const KEYS = { task: ["tasks", "tk"], milestone: ["milestones", "ms"], note: ["notes", "nt"] };
+const KEYS = { task: ["tasks", "tk"], milestone: ["milestones", "ms"], note: ["notes", "nt"], folder: ["folders", "fd"] };
 const FAB = { tasks: ["task", "New task"], roadmap: ["milestone", "New milestone"], notes: ["note", "New note"] };
 
 export default function ProjectScreen() {
@@ -26,7 +27,10 @@ function Detail({ project }) {
   const snackbar = useSnackbar();
   const scrollingDown = useScrollingDown();
   const [tab, setTab] = useState("tasks");
-  const [sheet, setSheet] = useState(null); // { kind, item? } | { kind: "project" }
+  const [sheet, setSheet] = useState(null); // { kind, item? } | { kind: "project" } | { kind: "folder", item? }
+  const [folderId, setFolderId] = useState(null); // the folder open in the Tasks tab (null = top level)
+  // a folder that no longer exists (deleted, or removed on another device) sends you back to the top
+  useEffect(() => { if (folderId && !project.folders.some((f) => f.id === folderId)) setFolderId(null); }, [folderId, project.folders]);
   const { done, total } = progress(project);
   const [fabKind, fabLabel] = FAB[tab];
 
@@ -34,6 +38,31 @@ function Detail({ project }) {
     const [key, prefix] = KEYS[kind];
     edit(project.id, (p) => ({ [key]: upsert(p[key], item.id ? item : { ...item, id: uid(prefix) }) }));
     setSheet(null);
+  };
+
+  const removeFolder = (folder) => {
+    // what was inside moves up one level instead of being lost
+    const parentId = folder.parentId ?? null;
+    const index = project.folders.findIndex((f) => f.id === folder.id);
+    const subIds = project.folders.filter((f) => f.parentId === folder.id).map((f) => f.id);
+    const taskIds = project.tasks.filter((t) => t.folderId === folder.id).map((t) => t.id);
+    edit(project.id, (p) => ({
+      folders: p.folders.filter((f) => f.id !== folder.id).map((f) => (f.parentId === folder.id ? { ...f, parentId } : f)),
+      tasks: p.tasks.map((t) => (t.folderId === folder.id ? { ...t, folderId: parentId } : t)),
+    }));
+    if (folderId === folder.id) setFolderId(parentId);
+    setSheet(null);
+    snackbar.show({
+      message: `Deleted folder “${folder.name}”`,
+      actionLabel: "Undo",
+      onAction: () =>
+        edit(project.id, (p) => {
+          if (p.folders.some((f) => f.id === folder.id)) return {};
+          const list = p.folders.map((f) => (subIds.includes(f.id) ? { ...f, parentId: folder.id } : f));
+          list.splice(Math.min(index, list.length), 0, folder);
+          return { folders: list, tasks: p.tasks.map((t) => (taskIds.includes(t.id) ? { ...t, folderId: folder.id } : t)) };
+        }),
+    });
   };
 
   const cycle = (id) => edit(project.id, (p) => ({ tasks: p.tasks.map((t) => (t.id === id ? { ...t, status: nextStatus(t.status) } : t)) }));
@@ -95,7 +124,7 @@ function Detail({ project }) {
 
         <ButtonGroup label="Section" value={tab} onChange={setTab} options={TABS} className="proj-tabs" />
 
-        {tab === "tasks" && <TasksTab project={project} onCycle={cycle} onOpen={(item) => setSheet({ kind: "task", item })} />}
+        {tab === "tasks" && <TasksTab project={project} folderId={folderId} onFolder={setFolderId} onNewFolder={() => setSheet({ kind: "folder" })} onEditFolder={(item) => setSheet({ kind: "folder", item })} onCycle={cycle} onOpen={(item) => setSheet({ kind: "task", item })} />}
         {tab === "roadmap" && <RoadmapTab project={project} onOpen={(item) => setSheet({ kind: "milestone", item })} />}
         {tab === "notes" && <NotesTab project={project} onOpen={(item) => setSheet({ kind: "note", item })} />}
       </main>
@@ -103,8 +132,11 @@ function Detail({ project }) {
       <Fab className="proj-fab" icon={<Plus size={26} strokeWidth={2.6} />} label={fabLabel} extended={!scrollingDown} onClick={() => setSheet({ kind: fabKind })} />
 
       {sheet?.kind === "project" && <ProjectSheet project={project} onClose={() => setSheet(null)} onSave={(d) => { edit(project.id, () => d); setSheet(null); }} onDelete={removeProject} />}
-      {sheet && sheet.kind !== "project" && (
-        <EntrySheet key={sheet.item?.id ?? "new"} kind={sheet.kind} item={sheet.item} project={project} onClose={() => setSheet(null)} onSave={(item) => save(sheet.kind, item)} onDelete={() => remove(sheet.kind, sheet.item)} />
+      {sheet?.kind === "folder" && (
+        <FolderSheet key={sheet.item?.id ?? "new"} folder={sheet.item} parentId={folderId} folders={project.folders} onClose={() => setSheet(null)} onSave={(item) => save("folder", item)} onDelete={() => removeFolder(sheet.item)} />
+      )}
+      {sheet && sheet.kind !== "project" && sheet.kind !== "folder" && (
+        <EntrySheet key={sheet.item?.id ?? "new"} kind={sheet.kind} item={sheet.item} project={project} defaultFolder={folderId} onClose={() => setSheet(null)} onSave={(item) => save(sheet.kind, item)} onDelete={() => remove(sheet.kind, sheet.item)} />
       )}
     </>
   );

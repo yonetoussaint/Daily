@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Button, Chip, Sheet, TextField } from "../../../design/components";
 import { AREAS, NOTE_KINDS } from "../model";
+import { FolderSelect } from "./FolderSheet";
 
 function TextArea({ label, value, onChange }) {
   return (
@@ -12,9 +13,9 @@ function TextArea({ label, value, onChange }) {
 }
 
 /** One sheet for adding / editing a task, a milestone or a note. */
-export default function EntrySheet({ kind, item, project, onClose, onSave, onDelete }) {
+export default function EntrySheet({ kind, item, project, defaultFolder = null, onClose, onSave, onDelete }) {
   const [f, setF] = useState(() => ({
-    title: "", area: "product", milestoneId: null, due: "", details: "", body: "", ...item,
+    title: "", area: "product", milestoneId: null, folderId: defaultFolder, due: "", details: "", body: "", ...item,
     noteKind: kind === "note" ? item?.kind ?? "note" : "note",
   }));
   const set = (patch) => setF((s) => ({ ...s, ...patch }));
@@ -23,7 +24,7 @@ export default function EntrySheet({ kind, item, project, onClose, onSave, onDel
     e.preventDefault();
     const title = f.title.trim();
     if (!title) return;
-    if (kind === "task") onSave({ ...item, title, area: f.area, milestoneId: f.milestoneId, due: f.due, details: f.details.trim(), status: item?.status ?? "todo" });
+    if (kind === "task") onSave({ ...item, title, area: f.area, milestoneId: f.milestoneId, folderId: f.folderId ?? null, due: f.due, details: f.details.trim(), status: item?.status ?? "todo" });
     else if (kind === "milestone") onSave({ ...item, title, due: f.due });
     else onSave({ ...item, title, kind: f.noteKind, body: f.body.trim(), createdAt: item?.createdAt ?? Date.now() });
   };
@@ -41,6 +42,7 @@ export default function EntrySheet({ kind, item, project, onClose, onSave, onDel
                 {AREAS.map((a) => <Chip key={a.id} hue={a.hue} icon={<a.icon size={18} />} selected={f.area === a.id} onClick={() => set({ area: a.id })}>{a.label}</Chip>)}
               </div>
             </fieldset>
+            <FolderSelect label="Folder" folders={project.folders} value={f.folderId} onChange={(folderId) => set({ folderId })} />
             <fieldset className="sheet-section">
               <legend className="label-lg muted">Milestone</legend>
               <div className="chip-wrap">

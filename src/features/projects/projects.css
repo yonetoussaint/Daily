@@ -57,4 +57,19 @@
 .swatch { display: block; width: 18px; height: 18px; border-radius: var(--shape-full); background: var(--acc); }
 .btn-danger { color: var(--error); margin-right: auto; }
 
+/* folders */
+.crumbs { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 0; margin: 16px 0 4px; }
+.crumb-item { display: inline-flex; align-items: center; color: var(--on-surface-variant); }
+.crumb { border: 0; background: none; padding: 6px 10px; border-radius: var(--shape-full); color: var(--on-surface-variant); font: inherit; cursor: pointer; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.crumb.is-here { color: var(--on-surface); font-weight: 700; }
+.folder-bar { display: flex; align-items: center; gap: 8px; margin: 8px 0 12px; }
+.folder-list { list-style: none; margin: 0 0 8px; padding: 0; display: grid; gap: 4px; }
+.folder-row { display: flex; align-items: center; gap: 4px; padding-right: 4px; border-radius: var(--shape-lg); background: var(--surface-container); }
+.folder-main { flex: 1; min-width: 0; display: flex; align-items: center; gap: 14px; padding: 12px 8px 12px 14px; text-align: left; border: 0; background: none; color: inherit; font: inherit; cursor: pointer; border-radius: var(--shape-lg); }
+.folder-icon { flex: none; width: 40px; height: 40px; display: grid; place-items: center; border-radius: var(--shape-full); background: var(--secondary-container); color: var(--on-secondary-container); }
+.folder-text { flex: 1; min-width: 0; display: grid; gap: 2px; }
+.folder-text .title-md { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.proj-select { appearance: none; padding-top: 22px; background-image: none; }
+.proj-select-label { transform: translateY(-13px) scale(.75); }
+
 @media (min-width: 840px) { .proj-page { padding-top: 8px; } }

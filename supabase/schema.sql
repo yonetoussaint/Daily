@@ -5,7 +5,7 @@
 --   Home tasks  home_organizer_items
 --   Todo        todo_lists, todo_tasks
 --   Docs        docs_books, docs_chapters, docs_sections
---   Projects    projects, project_milestones, project_tasks, project_notes
+--   Projects    projects, project_milestones, project_folders, project_tasks, project_notes
 --   Values      life_values, life_principles, life_reflections
 --   Wardrobe & Grooming    wardrobe_items
 --   Outfits     outfits, outfit_items (links to wardrobe_items)
@@ -127,10 +127,22 @@ create table if not exists public.project_milestones (
 );
 create index if not exists project_milestones_project_idx on public.project_milestones (project_id, position);
 
+-- Folders inside a project. They nest without limit: parent_id points at another folder (null = top level).
+create table if not exists public.project_folders (
+  id         text primary key,
+  project_id text not null references public.projects(id) on delete cascade,
+  parent_id  text references public.project_folders(id) on delete set null,
+  name       text not null,
+  position   integer not null default 0
+);
+create index if not exists project_folders_project_idx on public.project_folders (project_id, position);
+create index if not exists project_folders_parent_idx  on public.project_folders (parent_id);
+
 create table if not exists public.project_tasks (
   id           text primary key,
   project_id   text not null references public.projects(id) on delete cascade,
   milestone_id text references public.project_milestones(id) on delete set null,
+  folder_id    text references public.project_folders(id) on delete set null,
   title        text not null,
   area         text not null default 'product',    -- product | tech | marketing | legal | ops | finance
   details      text not null default '',
@@ -140,6 +152,10 @@ create table if not exists public.project_tasks (
 );
 create index if not exists project_tasks_project_idx   on public.project_tasks (project_id, position);
 create index if not exists project_tasks_milestone_idx on public.project_tasks (milestone_id);
+
+-- Databases created before folders existed: add the column (the folders table is created above).
+alter table public.project_tasks add column if not exists folder_id text references public.project_folders(id) on delete set null;
+create index if not exists project_tasks_folder_idx on public.project_tasks (folder_id);
 
 create table if not exists public.project_notes (
   id         text primary key,
@@ -262,7 +278,7 @@ begin
     'home_organizer_items',
     'todo_lists', 'todo_tasks', 'gaz_tasks',
     'docs_books', 'docs_chapters', 'docs_sections',
-    'projects', 'project_milestones', 'project_tasks', 'project_notes',
+    'projects', 'project_milestones', 'project_folders', 'project_tasks', 'project_notes',
     'life_values', 'life_principles', 'life_reflections',
     'wardrobe_items',
     'outfits', 'outfit_items'
