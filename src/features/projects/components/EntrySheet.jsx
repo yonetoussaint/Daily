@@ -43,13 +43,6 @@ export default function EntrySheet({ kind, item, project, defaultFolder = null, 
               </div>
             </fieldset>
             <FolderSelect label="Folder" folders={project.folders} value={f.folderId} onChange={(folderId) => set({ folderId })} />
-            <fieldset className="sheet-section">
-              <legend className="label-lg muted">Milestone</legend>
-              <div className="chip-wrap">
-                <Chip selected={!f.milestoneId} onClick={() => set({ milestoneId: null })}>None</Chip>
-                {project.milestones.map((m) => <Chip key={m.id} selected={f.milestoneId === m.id} onClick={() => set({ milestoneId: m.id })}>{m.title}</Chip>)}
-              </div>
-            </fieldset>
           </>
         )}
 
