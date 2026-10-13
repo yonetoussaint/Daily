@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { ArrowLeft, FolderPlus, LayoutGrid, List, ListPlus, Pencil, Plus, Upload } from "lucide-react";
-import { Button, Fab, IconButton, Sheet, TopAppBar, WavyProgress, useScrollingDown, useSnackbar } from "../../../design/components";
+import { ArrowLeft, Search, X, FolderPlus, LayoutGrid, List, ListPlus, Pencil, Plus, Upload } from "lucide-react";
+import { Button, Fab, IconButton, Sheet, TextField, TopAppBar, WavyProgress, useScrollingDown, useSnackbar } from "../../../design/components";
 import { useNav } from "../../../app/NavProvider";
 import { useProjects } from "../ProjectsProvider";
 import { folderPath, folderTaskStats, nextStatus, progress, uid, upsert } from "../model";
@@ -28,6 +28,7 @@ function Detail({ project }) {
   const scrollingDown = useScrollingDown();
   const [folderId, setFolderId] = useState(null); // the folder that's open (null = top level)
   const [grid, setGrid] = useState(false);
+  const [query, setQuery] = useState("");
   const [sheet, setSheet] = useState(null); // { kind: "add" | "project" | "task" | "folder", item? }
 
   // a folder that no longer exists (deleted, or removed on another device) sends you back to the top
@@ -128,12 +129,24 @@ function Detail({ project }) {
         }
       />
       <main className="proj-page">
-        <Breadcrumbs project={project} folderId={folderId} onFolder={setFolderId} />
-        <div className="fm-summary acc" style={{ "--hue": project.hue }}>
+        <div className="fm-search">
+          <TextField
+            type="search"
+            label="Search folders and tasks"
+            leading={<Search size={22} />}
+            trailing={query ? <IconButton label="Clear search" onClick={() => setQuery("")}><X size={20} /></IconButton> : null}
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            autoComplete="off"
+            enterKeyHint="search"
+          />
+        </div>
+        {!query.trim() && <Breadcrumbs project={project} folderId={folderId} onFolder={setFolderId} />}
+        {!query.trim() && <div className="fm-summary acc" style={{ "--hue": project.hue }}>
           <WavyProgress value={done} total={total} label={current ? `${current.name} progress` : "Tasks done"} />
           <p className="body-md muted">{total === 0 ? "No tasks yet" : `${done} of ${total} tasks done`}{current ? " in this folder" : ""}</p>
-        </div>
-        <FileManager project={project} folderId={folderId} grid={grid} onFolder={setFolderId} onEditFolder={(item) => setSheet({ kind: "folder", item })} onCycle={cycle} onOpen={(item) => setSheet({ kind: "task", item })} />
+        </div>}
+        <FileManager project={project} folderId={folderId} grid={grid} query={query} onFolder={(id) => { setQuery(""); setFolderId(id); }} onEditFolder={(item) => setSheet({ kind: "folder", item })} onCycle={cycle} onOpen={(item) => setSheet({ kind: "task", item })} />
       </main>
 
       <Fab className="proj-fab" icon={<Plus size={26} strokeWidth={2.6} />} label="New" extended={!scrollingDown} onClick={() => setSheet({ kind: "add" })} />

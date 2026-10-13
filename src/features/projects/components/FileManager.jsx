@@ -1,7 +1,6 @@
-import { useState } from "react";
 import { CheckCircle2, ChevronRight, Circle, CircleDot, Folder, FolderOpen, Home } from "lucide-react";
-import { Chip, EmptyState } from "../../../design/components";
-import { AREAS, STATUSES, areaInfo, childFolders, folderPath, folderTaskStats, nextStatus } from "../model";
+import { EmptyState } from "../../../design/components";
+import { STATUSES, areaInfo, childFolders, folderPath, folderTaskStats, nextStatus } from "../model";
 
 const STATUS_ICON = { todo: Circle, doing: CircleDot, done: CheckCircle2 };
 const statusLabel = (s) => STATUSES.find((x) => x.id === s)?.label ?? s;
@@ -27,23 +26,24 @@ export function Breadcrumbs({ project, folderId, onFolder }) {
   );
 }
 
-/** What's inside one folder: subfolders first, then the tasks that sit directly in it. */
-export default function FileManager({ project, folderId, grid, onFolder, onEditFolder, onCycle, onOpen }) {
-  const [area, setArea] = useState("all");
-  const folders = childFolders(project.folders, folderId);
-  const tasks = project.tasks.filter((t) => (t.folderId ?? null) === (folderId ?? null) && (area === "all" || t.area === area));
+/** Where a folder sits, as "Parent / Child", for search results. */
+const where = (project, folderId) => folderPath(project.folders, folderId).map((f) => f.name).join(" / ");
+
+/** What's inside one folder: subfolders first, then the tasks that sit directly in it. With a search query, matches from the whole project instead. */
+export default function FileManager({ project, folderId, grid, query = "", onFolder, onEditFolder, onCycle, onOpen }) {
+  const q = query.trim().toLowerCase();
+  const searching = q.length > 0;
+  const folders = searching ? project.folders.filter((f) => f.name.toLowerCase().includes(q)) : childFolders(project.folders, folderId);
+  const tasks = searching
+    ? project.tasks.filter((t) => `${t.title} ${t.details ?? ""} ${areaInfo(t.area).label}`.toLowerCase().includes(q))
+    : project.tasks.filter((t) => (t.folderId ?? null) === (folderId ?? null));
   const empty = folders.length === 0 && tasks.length === 0;
 
   return (
     <>
-      <nav className="chips-row" aria-label="Area">
-        <Chip selected={area === "all"} onClick={() => setArea("all")}>All</Chip>
-        {AREAS.map((a) => <Chip key={a.id} hue={a.hue} icon={<a.icon size={18} />} selected={area === a.id} onClick={() => setArea(a.id)}>{a.label}</Chip>)}
-      </nav>
-
       {empty ? (
-        <EmptyState icon={<FolderOpen size={52} />} title={folderId ? "This folder is empty" : area === "all" ? "Nothing here yet" : "No tasks in this area"}>
-          {area === "all" ? "Tap + to add a task or a folder." : "Try another area, or tap All."}
+        <EmptyState icon={<FolderOpen size={52} />} title={searching ? "No matches" : folderId ? "This folder is empty" : "Nothing here yet"}>
+          {searching ? `Nothing in this project matches “${query.trim()}”.` : "Tap + to add a task or a folder."}
         </EmptyState>
       ) : (
         <ul className={`fm-list${grid ? " is-grid" : ""}`}>
@@ -56,7 +56,7 @@ export default function FileManager({ project, folderId, grid, onFolder, onEditF
                   <span className="fm-icon fm-folder"><Folder size={26} fill="currentColor" fillOpacity={0.18} /></span>
                   <span className="fm-text">
                     <span className="title-md fm-name">{f.name}</span>
-                    <span className="body-md muted">{plural(items, "item")}{total > 0 ? ` · ${done}/${total} done` : ""}</span>
+                    <span className="body-md muted">{searching && f.parentId ? `${where(project, f.parentId)} · ` : ""}{plural(items, "item")}{total > 0 ? ` · ${done}/${total} done` : ""}</span>
                   </span>
                 </button>
                 <button className="fm-more state" aria-label={`Edit ${f.name}`} onClick={() => onEditFolder(f)}>⋯</button>
@@ -77,6 +77,7 @@ export default function FileManager({ project, folderId, grid, onFolder, onEditF
                     <span className={`title-md fm-name${t.status === "done" ? " is-done" : ""}`}>{t.title}</span>
                     <span className="body-md muted fm-meta">
                       <span className="task-area"><a.icon size={14} />{a.label}</span>
+                      {searching && t.folderId && <span>{where(project, t.folderId)}</span>}
                       {t.due && <span className={late ? "is-late" : ""}>{late ? "Overdue, " : ""}{fmt(t.due)}</span>}
                     </span>
                   </span>

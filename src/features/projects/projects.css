@@ -101,3 +101,4 @@
 .json-input:focus { border-color: var(--primary); }
 .json-input[aria-invalid="true"] { border-color: var(--error); }
 .import-error { margin: 8px 4px 0; color: var(--error); }
+.fm-search { margin: 12px 0 4px; }
