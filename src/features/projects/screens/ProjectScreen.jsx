@@ -1,12 +1,14 @@
 import { useEffect, useState } from "react";
-import { ArrowLeft, FolderPlus, LayoutGrid, List, ListPlus, Pencil, Plus } from "lucide-react";
+import { ArrowLeft, FolderPlus, LayoutGrid, List, ListPlus, Pencil, Plus, Upload } from "lucide-react";
 import { Button, Fab, IconButton, Sheet, TopAppBar, WavyProgress, useScrollingDown, useSnackbar } from "../../../design/components";
 import { useNav } from "../../../app/NavProvider";
 import { useProjects } from "../ProjectsProvider";
 import { folderPath, folderTaskStats, nextStatus, progress, uid, upsert } from "../model";
+import { buildTree } from "../importer";
 import FileManager, { Breadcrumbs } from "../components/FileManager";
 import EntrySheet from "../components/EntrySheet";
 import FolderSheet from "../components/FolderSheet";
+import ImportSheet from "../components/ImportSheet";
 import ProjectSheet from "../components/ProjectSheet";
 
 export default function ProjectScreen() {
@@ -43,6 +45,22 @@ function Detail({ project }) {
   const saveFolder = (item) => {
     edit(project.id, (p) => ({ folders: upsert(p.folders, item.id ? item : { ...item, id: uid("fd") }) }));
     setSheet(null);
+  };
+
+  const importTree = (tree, { folders, tasks }) => {
+    const added = buildTree(tree, folderId);
+    edit(project.id, (p) => ({ folders: [...p.folders, ...added.folders], tasks: [...p.tasks, ...added.tasks] }));
+    setSheet(null);
+    const plural = (n, w) => `${n} ${w}${n === 1 ? "" : "s"}`;
+    snackbar.show({
+      message: `Imported ${plural(folders, "folder")} and ${plural(tasks, "task")}`,
+      actionLabel: "Undo",
+      onAction: () => {
+        const fIds = new Set(added.folders.map((f) => f.id));
+        const tIds = new Set(added.tasks.map((t) => t.id));
+        edit(project.id, (p) => ({ folders: p.folders.filter((f) => !fIds.has(f.id)), tasks: p.tasks.filter((t) => !tIds.has(t.id)) }));
+      },
+    });
   };
 
   const cycle = (id) => edit(project.id, (p) => ({ tasks: p.tasks.map((t) => (t.id === id ? { ...t, status: nextStatus(t.status) } : t)) }));
@@ -104,6 +122,7 @@ function Detail({ project }) {
         actions={
           <>
             <IconButton label={grid ? "Show as list" : "Show as grid"} onClick={() => setGrid((g) => !g)}>{grid ? <List size={22} /> : <LayoutGrid size={22} />}</IconButton>
+            <IconButton label="Import from JSON" onClick={() => setSheet({ kind: "import" })}><Upload size={22} /></IconButton>
             <IconButton label={current ? "Edit folder" : "Edit project"} onClick={() => setSheet(current ? { kind: "folder", item: current } : { kind: "project" })}><Pencil size={22} /></IconButton>
           </>
         }
@@ -124,9 +143,11 @@ function Detail({ project }) {
           <div className="sheet-form add-choices">
             <Button variant="tonal" icon={<ListPlus size={20} />} onClick={() => setSheet({ kind: "task" })}>New task</Button>
             <Button variant="tonal" icon={<FolderPlus size={20} />} onClick={() => setSheet({ kind: "folder" })}>New folder</Button>
+            <Button variant="tonal" icon={<Upload size={20} />} onClick={() => setSheet({ kind: "import" })}>Import from JSON</Button>
           </div>
         </Sheet>
       )}
+      {sheet?.kind === "import" && <ImportSheet where={current ? current.name : project.name} onClose={() => setSheet(null)} onImport={importTree} />}
       {sheet?.kind === "project" && <ProjectSheet project={project} onClose={() => setSheet(null)} onSave={(d) => { edit(project.id, () => d); setSheet(null); }} onDelete={removeProject} />}
       {sheet?.kind === "folder" && (
         <FolderSheet key={sheet.item?.id ?? "new"} folder={sheet.item} parentId={folderId} folders={project.folders} onClose={() => setSheet(null)} onSave={saveFolder} onDelete={() => removeFolder(sheet.item)} />

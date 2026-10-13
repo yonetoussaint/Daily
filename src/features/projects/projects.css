@@ -91,3 +91,13 @@
 .proj-select-label { transform: translateY(-13px) scale(.75); }
 
 @media (min-width: 840px) { .proj-page { padding-top: 8px; } }
+
+/* ── JSON import sheet ── */
+.json-input {
+  display: block; width: 100%; min-height: 220px; max-height: 45vh; padding: 16px 18px; border: 2px solid transparent; border-radius: var(--shape-lg-inc);
+  background: var(--surface-container-highest); color: var(--on-surface); outline: none; resize: vertical;
+  font: 500 13px/1.55 ui-monospace, "SF Mono", Menlo, Consolas, monospace; tab-size: 2; transition: border-color var(--fade);
+}
+.json-input:focus { border-color: var(--primary); }
+.json-input[aria-invalid="true"] { border-color: var(--error); }
+.import-error { margin: 8px 4px 0; color: var(--error); }
